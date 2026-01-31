@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CalendarDays, Activity, TrendingUp, History, Users, Heart, HeartCrack, Minus } from 'lucide-react';
 import { Trainee } from '../../types/index';
@@ -14,27 +15,27 @@ interface Props {
 
 const DashboardSidebar: React.FC<Props> = ({ 
   week, 
-  activeTrainees = [], 
-  trainees = [], 
+  activeTrainees, 
+  trainees, 
   selectedTraineeId, 
   onSelectTrainee,
   onOpenHistory
 }) => {
-  // Safe find with fallback
-  const selectedTrainee = trainees.find(t => t.id === selectedTraineeId) || activeTrainees[0] || null;
+  const selectedTrainee = trainees.find(t => t.id === selectedTraineeId) || activeTrainees[0];
 
-  const getRelationships = (trainee: Trainee | null) => {
-    if (!trainee || !trainee.relationships) return [];
+  // Helper to get relationships sorted
+  const getRelationships = (trainee: Trainee) => {
+    if (!trainee.relationships) return [];
     return Object.entries(trainee.relationships)
       .map(([id, score]) => {
         const target = trainees.find(t => t.id === id);
         return { target, score };
       })
       .filter(r => r.target && r.target.status === 'Active')
-      .sort((a, b) => (b.score || 0) - (a.score || 0));
+      .sort((a, b) => b.score - a.score); // Highest first
   };
 
-  const relations = getRelationships(selectedTrainee);
+  const relations = selectedTrainee ? getRelationships(selectedTrainee) : [];
 
   return (
     <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6">
@@ -56,12 +57,12 @@ const DashboardSidebar: React.FC<Props> = ({
             </h2>
           </div>
           
-          {selectedTrainee ? (
+          {activeTrainees.length > 0 ? (
             <div className="flex-1 min-h-[300px] flex flex-col items-center justify-center relative bg-zinc-950/30 rounded-lg p-2">
               <select 
                 className="absolute top-2 right-2 bg-zinc-800 border-zinc-700 rounded text-xs px-2 py-1 focus:outline-none z-10 text-white"
                 onChange={(e) => onSelectTrainee(e.target.value)}
-                value={selectedTrainee.id}
+                value={selectedTraineeId || activeTrainees[0]?.id}
               >
                 {activeTrainees.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -69,19 +70,17 @@ const DashboardSidebar: React.FC<Props> = ({
               <StatRadar trainee={selectedTrainee} />
             </div>
           ) : (
-            <div className="flex-1 min-h-[250px] flex items-center justify-center text-zinc-600 text-sm italic">
-              데이터를 불러오는 중...
-            </div>
+            <div className="flex-1 min-h-[250px] flex items-center justify-center text-zinc-600">연습생이 없습니다.</div>
           )}
       </div>
 
-      {/* Relationship Panel */}
+      {/* Relationship Panel (New) */}
       {selectedTrainee && relations.length > 0 && (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
              <Users size={18} className="text-blue-500" /> 교우 관계
            </h2>
-           <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+           <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
              {relations.map(({ target, score }) => {
                 if (!target) return null;
                 
@@ -124,7 +123,7 @@ const DashboardSidebar: React.FC<Props> = ({
             <TrendingUp size={18} className="text-yellow-500" /> 팬덤 랭킹 (Top 3)
           </h2>
           <div className="space-y-3">
-            {[...activeTrainees].sort((a,b) => b.fans - a.fans).slice(0, 3).map((t, idx) => (
+            {activeTrainees.sort((a,b) => b.fans - a.fans).slice(0, 3).map((t, idx) => (
               <div key={t.id} className="flex items-center gap-3 p-3 bg-black/40 rounded-lg border border-zinc-800/50">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs" style={{backgroundColor: t.imageColor}}>{idx+1}</div>
                 <div className="w-8 h-8 rounded-full bg-zinc-800" style={{backgroundColor: t.imageColor}} />

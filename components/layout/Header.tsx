@@ -1,5 +1,6 @@
+
 import React, { useRef } from 'react';
-import { Music2, Trophy, RotateCcw, FileOutput, FileInput, CloudUpload, CloudDownload } from 'lucide-react';
+import { Music2, Trophy, Save, Download, RotateCcw, FileOutput, FileInput, CloudUpload, CloudDownload } from 'lucide-react';
 import { Trainee } from '../../types/index';
 
 interface HeaderProps {
@@ -26,6 +27,7 @@ const Header: React.FC<HeaderProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       onFileImport(file);
+      // Reset input value to allow same file import
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -42,12 +44,14 @@ const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-6">
+        {/* Fan Status */}
         <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-zinc-900 rounded-full border border-zinc-800 text-sm">
           <Trophy size={14} className="text-yellow-500" />
           <span>총 팬덤: <span className="text-white font-bold">{totalFans}명</span></span>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Browser Storage Group */}
           <div className="flex items-center bg-zinc-900/50 rounded-lg p-0.5 border border-zinc-800">
             <button 
               onClick={onBrowserSave}
@@ -67,6 +71,7 @@ const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
+          {/* File Storage Group */}
           <div className="flex items-center bg-zinc-900/50 rounded-lg p-0.5 border border-zinc-800">
             <button 
               onClick={onFileExport}
@@ -84,11 +89,22 @@ const Header: React.FC<HeaderProps> = ({
               <FileInput size={16} />
               <span className="hidden lg:block">파일 로드</span>
             </button>
-            <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileChange} />
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".json" 
+              onChange={handleFileChange}
+            />
           </div>
 
           <div className="w-px h-6 bg-zinc-800 mx-1" />
-          <button onClick={onReset} title="게임 초기화" className="p-2 text-red-400/70 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors">
+          
+          <button 
+            onClick={onReset}
+            title="게임 초기화"
+            className="p-2 text-red-400/70 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+          >
             <RotateCcw size={16} />
           </button>
         </div>
