@@ -5,11 +5,12 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: './', // 상대 경로를 사용하여 GitHub Pages의 하위 디렉토리에서도 작동하게 함
+  base: './', // GitHub Pages 배포를 위한 상대 경로 설정
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
-    minify: 'terser',
+    // [수정] terser 대신 Vite에 내장되어 별도 설치가 필요 없는 esbuild를 사용합니다.
+    minify: 'esbuild',
   },
 });
