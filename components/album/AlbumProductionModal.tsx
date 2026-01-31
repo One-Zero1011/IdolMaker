@@ -112,7 +112,7 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
               <div className="flex gap-4">
                  {Object.entries(ALBUM_CONCEPTS[selectedConcept].weights).map(([stat, weight]) => (
                    <div key={stat} className="px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800 text-[10px] text-zinc-300 font-bold">
-                     {stat.toUpperCase()} ({Math.floor(weight * 100)}%)
+                     {stat.toUpperCase()} ({Math.floor((weight ?? 0) * 100)}%)
                    </div>
                  ))}
               </div>
