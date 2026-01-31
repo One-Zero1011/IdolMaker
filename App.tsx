@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { useGame } from './hooks/useGame';
-import { Trainee, AlbumConcept } from './types/index';
-import { Smartphone, Disc } from 'lucide-react';
+import { Trainee, AlbumConcept, Album } from './types/index';
+import { Smartphone, Disc, Timer } from 'lucide-react';
 
 // Components
 import Header from './components/layout/Header';
@@ -19,12 +19,14 @@ import ContractRenewalModal from './components/ContractRenewalModal';
 import SpecialEventModal from './components/SpecialEventModal';
 import AlbumProductionModal from './components/album/AlbumProductionModal';
 import AlbumHistory from './components/album/AlbumHistory';
+import AlbumReleaseSimulationModal from './components/album/AlbumReleaseSimulationModal';
 
 const App: React.FC = () => {
   const {
     week,
     funds,
     reputation,
+    lastAlbumWeek,
     facilities,
     trainees,
     activeTrainees,
@@ -51,7 +53,8 @@ const App: React.FC = () => {
     resetGame,
     closeMessage,
     handleEventDecision,
-    produceAlbum
+    produceAlbum,
+    settleAlbumRevenue
   } = useGame();
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -61,8 +64,15 @@ const App: React.FC = () => {
   const [isFanFeedOpen, setIsFanFeedOpen] = useState(false);
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   
+  const [isSimulationOpen, setIsSimulationOpen] = useState(false);
+  const [currentResult, setCurrentResult] = useState<{ album: Album; revenue: number } | null>(null);
+
   const [isRenewalModalOpen, setIsRenewalModalOpen] = useState(false);
   const [targetTrainee, setTargetTrainee] = useState<Trainee | null>(null);
+
+  // 앨범 발매 가능 여부 체크
+  const canProduceAlbum = week - lastAlbumWeek >= 13;
+  const weeksUntilNextAlbum = 13 - (week - lastAlbumWeek);
 
   const handleOpenCreate = () => {
     setEditingTrainee(undefined);
@@ -87,18 +97,20 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAlbumProduction = (title: string, concept: AlbumConcept) => {
-    const result = produceAlbum(title, concept);
+  const handleAlbumProduction = (title: string, concept: AlbumConcept, price: number) => {
+    const result = produceAlbum(title, concept, price);
     if (result) {
       setIsAlbumModalOpen(false);
-      // 결과 알림
-      const { album, revenue } = result;
-      const billboardText = album.isBillboard ? "\n🌟 빌보드 차트 진입 성공!" : "";
-      const message = `"${album.title}" 발매 결과\n차트 최고 순위: ${album.peakChart}위\n앨범 판매량: ${album.sales.toLocaleString()}장\n총 정산금: ₩${revenue.toLocaleString()}${billboardText}`;
-      // 간단히 알림 (기존 모달 활용)
-      setTimeout(() => {
-         window.alert(message);
-      }, 500);
+      setCurrentResult(result);
+      // 잠시 지연 후 시뮬레이션 오픈
+      setTimeout(() => setIsSimulationOpen(true), 500);
+    }
+  };
+
+  const handleFinalSettlement = () => {
+    if (currentResult) {
+      settleAlbumRevenue(currentResult.album, currentResult.revenue);
+      setCurrentResult(null);
     }
   };
 
@@ -130,18 +142,23 @@ const App: React.FC = () => {
 
           <div className="col-span-12 lg:col-span-8 xl:col-span-9 space-y-10">
             
-            <div className="flex justify-end -mb-6 relative z-10">
+            <div className="flex justify-end -mb-6 relative z-10 items-center gap-4">
+               {!canProduceAlbum && activeTrainees.length > 0 && (
+                 <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-500 animate-pulse">
+                    <Timer size={14} /> 다음 컴백 준비 기간: <b>{weeksUntilNextAlbum}주 남음</b>
+                 </div>
+               )}
                <button 
-                disabled={activeTrainees.length === 0}
+                disabled={activeTrainees.length === 0 || !canProduceAlbum}
                 onClick={() => setIsAlbumModalOpen(true)}
                 className={`
                   flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-lg transition-all shadow-xl
-                  ${activeTrainees.length > 0 
+                  ${activeTrainees.length > 0 && canProduceAlbum
                     ? 'bg-pink-600 text-white hover:bg-pink-500 hover:scale-105 active:scale-95 shadow-pink-900/20' 
                     : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'}
                 `}
                >
-                 <Disc size={24} className="animate-spin-slow" /> 새로운 앨범 프로듀싱
+                 <Disc size={24} className={canProduceAlbum && activeTrainees.length > 0 ? "animate-spin-slow" : ""} /> 새로운 앨범 프로듀싱
                </button>
             </div>
 
@@ -237,6 +254,15 @@ const App: React.FC = () => {
         activeTrainees={activeTrainees}
         funds={funds}
         onProduce={handleAlbumProduction}
+      />
+
+      {/* Simulation Modal */}
+      <AlbumReleaseSimulationModal 
+        isOpen={isSimulationOpen}
+        album={currentResult?.album || null}
+        totalRevenue={currentResult?.revenue || 0}
+        onClose={() => setIsSimulationOpen(false)}
+        onSettle={handleFinalSettlement}
       />
       
       <MessageModal 

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Trainee, WeeklyPlan, GameLog, ScheduleType, FacilitiesState, FacilityType, TraineeStatus, SpecialEvent, Album, AlbumConcept } from '../types/index';
-import { COLORS, INITIAL_FUNDS, FACILITY_UPGRADE_COSTS, ANNUAL_EVENTS, ALBUM_CONCEPTS } from '../data/constants';
+import { COLORS, INITIAL_FUNDS, FACILITY_UPGRADE_COSTS, ANNUAL_EVENTS, ALBUM_CONCEPTS, BASE_ALBUM_PRICE } from '../data/constants';
 import { generateId, processWeek } from '../utils/gameLogic';
 
 const SAVE_KEY = 'k_idol_producer_v1_save';
@@ -18,6 +18,7 @@ export const useGame = () => {
   const [week, setWeek] = useState(1);
   const [funds, setFunds] = useState(INITIAL_FUNDS);
   const [reputation, setReputation] = useState(10); 
+  const [lastAlbumWeek, setLastAlbumWeek] = useState(-13); 
   const [facilities, setFacilities] = useState<FacilitiesState>({
     vocal: 1,
     dance: 1,
@@ -33,6 +34,7 @@ export const useGame = () => {
   const [historyLogs, setHistoryLogs] = useState<string[]>([]);
   
   const [currentSpecialEvent, setCurrentSpecialEvent] = useState<SpecialEvent | null>(null);
+  const [lastParticipatedEvent, setLastParticipatedEvent] = useState<SpecialEvent | null>(null); // 이번 주 참여한 이벤트 추적
   const [pendingDecision, setPendingDecision] = useState(false);
 
   const [notification, setNotification] = useState<NotificationState>({
@@ -53,6 +55,8 @@ export const useGame = () => {
     setWeek(1);
     setFunds(INITIAL_FUNDS);
     setReputation(10);
+    setLastAlbumWeek(-13);
+    setLastParticipatedEvent(null);
     setFacilities({ vocal: 1, dance: 1, rap: 1, gym: 1 });
     setHistoryLogs([]);
     setAlbums([]);
@@ -80,6 +84,7 @@ export const useGame = () => {
         setWeek(parsed.week || 1);
         setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
         setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setLastAlbumWeek(parsed.lastAlbumWeek !== undefined ? parsed.lastAlbumWeek : -13);
         setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
         setTrainees(parsed.trainees || []);
         setWeeklyPlan(parsed.weeklyPlan || []);
@@ -94,7 +99,7 @@ export const useGame = () => {
   }, []);
 
   const saveToBrowser = () => {
-    const dataToSave = { week, funds, reputation, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
+    const dataToSave = { week, funds, reputation, lastAlbumWeek, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
     showMessage("브라우저 저장 완료", "현재 진행 상황이 브라우저 캐시에 저장되었습니다.", "success");
   };
@@ -107,6 +112,7 @@ export const useGame = () => {
         setWeek(parsed.week || 1);
         setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
         setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setLastAlbumWeek(parsed.lastAlbumWeek !== undefined ? parsed.lastAlbumWeek : -13);
         setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
         setTrainees(parsed.trainees || []);
         setWeeklyPlan(parsed.weeklyPlan || []);
@@ -122,7 +128,7 @@ export const useGame = () => {
   };
 
   const exportToFile = () => {
-    const dataToSave = { week, funds, reputation, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
+    const dataToSave = { week, funds, reputation, lastAlbumWeek, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -140,6 +146,7 @@ export const useGame = () => {
         setWeek(parsed.week || 1);
         setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
         setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setLastAlbumWeek(parsed.lastAlbumWeek !== undefined ? parsed.lastAlbumWeek : -13);
         setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
         setTrainees(parsed.trainees || []);
         setWeeklyPlan(parsed.weeklyPlan || []);
@@ -161,15 +168,20 @@ export const useGame = () => {
     });
   };
 
-  const produceAlbum = (title: string, concept: AlbumConcept) => {
+  const produceAlbum = (title: string, concept: AlbumConcept, price: number) => {
+    if (week - lastAlbumWeek < 13) {
+      showMessage("제작 불가", `아직 다음 앨범을 준비하기에 이릅니다. (${13 - (week - lastAlbumWeek)}주 후 가능)`, "alert");
+      return null;
+    }
+
     const activeArtists = trainees.filter(t => t.status === 'Active');
     if (activeArtists.length === 0) {
       showMessage("활동 중단", "활동 가능한 아티스트가 없습니다.", "alert");
       return null;
     }
 
-    const cost = 200000;
-    if (funds < cost) {
+    const productionCost = 200000;
+    if (funds < productionCost) {
       showMessage("자금 부족", "앨범 제작비(₩200,000)가 부족합니다.", "alert");
       return null;
     }
@@ -188,10 +200,18 @@ export const useGame = () => {
     const randomFactor = 0.8 + Math.random() * 0.4;
     const finalQuality = Math.min(100, Math.floor(baseQuality * randomFactor));
     
-    const chartRank = Math.max(1, Math.min(100, 101 - Math.floor(finalQuality * (reputation / 100) + Math.random() * 20)));
-    const isBillboard = finalQuality > 85 && reputation > 70;
-    const sales = Math.floor(finalQuality * reputation * 50 + Math.random() * 50000);
-    const revenue = sales * 10;
+    const priceElasticity = Math.pow(BASE_ALBUM_PRICE / price, 1.8); // 가격 탄력성 강화 (고가일 때 더 가파르게 하락)
+    
+    // 수익 밸런스 대폭 하향 조정 (명성 영향력 강화, 기본치 하락)
+    // 인지도 10 기준: (80/10) * (10^1.6) * 3 = 8 * 40 * 3 = 약 960장
+    const baseSales = (finalQuality / 10) * Math.pow(reputation, 1.6) * 3;
+    const finalSales = Math.floor(baseSales * priceElasticity + (Math.random() * reputation * 30));
+    
+    const chartRank = Math.max(1, Math.min(100, 101 - Math.floor(finalQuality * (reputation / 100) * (priceElasticity > 1 ? 1 : priceElasticity) + Math.random() * 15)));
+    const isBillboard = finalQuality > 90 && reputation > 85 && priceElasticity >= 0.9;
+    
+    setFunds(prev => prev - productionCost);
+    setLastAlbumWeek(week);
 
     const newAlbum: Album = {
       id: generateId(),
@@ -199,26 +219,29 @@ export const useGame = () => {
       concept,
       releaseWeek: week,
       quality: finalQuality,
-      sales,
+      price: price,
+      sales: finalSales,
       peakChart: chartRank,
       isBillboard
     };
 
-    setFunds(prev => prev - cost + revenue);
-    setReputation(prev => Math.min(100, prev + (finalQuality / 20)));
-    setAlbums(prev => [newAlbum, ...prev]);
+    return { album: newAlbum, revenue: finalSales * price };
+  };
+
+  const settleAlbumRevenue = (album: Album, totalRevenue: number) => {
+    setFunds(prev => prev + totalRevenue);
+    setReputation(prev => Math.min(100, prev + (album.quality / 30))); 
+    setAlbums(prev => [album, ...prev]);
     
     setTrainees(prev => prev.map(t => t.status === 'Active' ? { 
       ...t, 
-      fans: t.fans + Math.floor(sales / 10),
-      stamina: Math.max(0, t.stamina - 30),
-      mental: Math.max(0, t.mental - 20)
+      fans: t.fans + Math.floor(album.sales / 80), // 팬 유입 난이도 추가 상승
+      stamina: Math.max(0, t.stamina - 40),
+      mental: Math.max(0, t.mental - 30)
     } : t));
 
-    const logText = `💿 [컴백] 신보 '${title}'(${conceptConfig.label}) 발매! 차트 최고 ${chartRank}위 달성!`;
+    const logText = `💿 [컴백 결과] '${album.title}' 활동 정산 완료. 수익: ₩${totalRevenue.toLocaleString()}`;
     setHistoryLogs(prev => [logText, ...prev]);
-
-    return { album: newAlbum, revenue };
   };
 
   const addNewTrainee = (newTraineeData: Omit<Trainee, 'id' | 'fans' | 'status' | 'history' | 'contractRemaining'>, castingCost: number) => {
@@ -300,6 +323,8 @@ export const useGame = () => {
 
     if (participate) {
       const event = currentSpecialEvent;
+      setLastParticipatedEvent(event); // 이번 주 참여 이벤트로 저장
+      
       if (event.costs.funds) setFunds(prev => prev - (event.costs.funds || 0));
       
       setTrainees(prev => prev.map(t => {
@@ -317,7 +342,6 @@ export const useGame = () => {
 
       const logText = `✨ [이벤트 참가] ${event.title}에 참가하여 커다란 성과를 거두었습니다!`;
       setHistoryLogs(prev => [logText, ...prev]);
-      showMessage("이벤트 완료", `${event.title} 참가를 통해 팬덤과 명성을 얻었습니다!`, "success");
     } else {
       const logText = `💤 [이벤트 패스] ${currentSpecialEvent.title} 참가를 포기하고 휴식을 선택했습니다.`;
       setHistoryLogs(prev => [logText, ...prev]);
@@ -336,6 +360,13 @@ export const useGame = () => {
 
     const { updatedTrainees, dailyLogs, flatLogs, fundChange, reputationChange } = processWeek(trainees, weeklyPlan, facilities, reputation);
     
+    // 만약 이번 주에 특별 이벤트에 참여했다면, 마지막 날(일요일) 로그에 결과를 추가합니다.
+    if (lastParticipatedEvent) {
+      const eventLog = `✨ [시즌 이벤트] '${lastParticipatedEvent.title}' 활동을 성공적으로 마쳤습니다! (+팬덤, +명성)`;
+      dailyLogs[6].logs.push(eventLog);
+      setLastParticipatedEvent(null); // 사용 후 초기화
+    }
+
     const finalizedTrainees: Trainee[] = updatedTrainees.map((t: Trainee) => {
       if (t.status === 'Active' || t.status === 'Hospitalized') {
         const nextContract = Math.max(0, t.contractRemaining - 1);
@@ -372,9 +403,9 @@ export const useGame = () => {
   const activeTrainees = trainees.filter(t => t.status === 'Active');
 
   return {
-    week, funds, reputation, facilities, trainees, activeTrainees, weeklyPlan, gameLogs, historyLogs, notification, albums,
+    week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, weeklyPlan, gameLogs, historyLogs, notification, albums,
     currentSpecialEvent, pendingDecision,
     addNewTrainee, updateTrainee, removeTrainee, renewContract, releaseTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, 
-    saveToBrowser, loadFromBrowser, exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum
+    saveToBrowser, loadFromBrowser, exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue
   };
 };

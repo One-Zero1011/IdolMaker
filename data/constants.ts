@@ -2,6 +2,7 @@
 import { ScheduleType, FacilityType, SpecialEvent, AlbumConcept } from '../types/index';
 
 export const INITIAL_FUNDS = 500000; 
+export const BASE_ALBUM_PRICE = 20000; // 적정 앨범 가격
 
 export const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 

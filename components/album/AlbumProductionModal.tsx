@@ -1,21 +1,28 @@
 
-import React, { useState } from 'react';
-import { X, Check, Disc, Music, Sparkles, TrendingUp, Info } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Check, Disc, Music, Sparkles, TrendingUp, Info, Wallet, BarChart3 } from 'lucide-react';
 import { AlbumConcept, Trainee } from '../../types/index';
-import { ALBUM_CONCEPTS } from '../../data/constants';
+import { ALBUM_CONCEPTS, BASE_ALBUM_PRICE } from '../../data/constants';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   activeTrainees: Trainee[];
   funds: number;
-  onProduce: (title: string, concept: AlbumConcept) => void;
+  onProduce: (title: string, concept: AlbumConcept, price: number) => void;
 }
 
 const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees, funds, onProduce }) => {
   const [title, setTitle] = useState('');
   const [selectedConcept, setSelectedConcept] = useState<AlbumConcept>('Refreshing');
+  const [price, setPrice] = useState(BASE_ALBUM_PRICE);
   const [isConfirming, setIsConfirming] = useState(false);
+
+  // 가격 탄력성 시뮬레이션
+  // React Rules of Hooks: 훅은 반드시 조건부 반환(return) 이전에 호출되어야 합니다.
+  const priceElasticity = useMemo(() => {
+    return Math.pow(BASE_ALBUM_PRICE / price, 1.5);
+  }, [price]);
 
   if (!isOpen) return null;
 
@@ -29,8 +36,9 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
   };
 
   const handleFinalProduce = () => {
-    onProduce(title, selectedConcept);
+    onProduce(title, selectedConcept, price);
     setTitle('');
+    setPrice(BASE_ALBUM_PRICE);
     setIsConfirming(false);
     onClose();
   };
@@ -47,7 +55,7 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
               </div>
               <div>
                  <h2 className="text-xl font-bold text-white tracking-tight">신규 앨범 프로듀싱</h2>
-                 <p className="text-zinc-500 text-xs">아티스트의 색깔을 결정하고 시장을 공략하십시오.</p>
+                 <p className="text-zinc-500 text-xs">앨범의 가치와 가격 전략을 결정하십시오.</p>
               </div>
            </div>
            <button onClick={onClose} className="p-2 text-zinc-500 hover:text-white transition-colors">
@@ -55,7 +63,7 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
            </button>
         </div>
 
-        <form onSubmit={handleStart} className="p-8 space-y-8">
+        <form onSubmit={handleStart} className="p-8 space-y-8 max-h-[75vh] overflow-y-auto">
            {/* Title Input */}
            <div className="space-y-3">
               <label className="text-sm font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
@@ -104,24 +112,71 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
               </div>
            </div>
 
-           {/* Summary / Stats Impact */}
-           <div className="bg-zinc-950 p-6 rounded-2xl border border-zinc-800">
-              <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold mb-3 uppercase tracking-wider">
-                 <TrendingUp size={14} /> 주요 영향 스탯
+           {/* Price Selection Strategy */}
+           <div className="space-y-4 bg-zinc-950 p-6 rounded-2xl border border-zinc-800">
+              <div className="flex justify-between items-end mb-2">
+                <label className="text-sm font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                   <Wallet size={14} /> 판매 가격 책정
+                </label>
+                <div className="text-right">
+                   <span className="text-2xl font-black text-white">₩{price.toLocaleString()}</span>
+                   <span className="text-[10px] text-zinc-500 block">적정가 ₩20,000 기준</span>
+                </div>
               </div>
-              <div className="flex gap-4">
-                 {Object.entries(ALBUM_CONCEPTS[selectedConcept].weights).map(([stat, weight]) => (
-                   <div key={stat} className="px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800 text-[10px] text-zinc-300 font-bold">
-                     {stat.toUpperCase()} ({Math.floor((weight ?? 0) * 100)}%)
-                   </div>
-                 ))}
+
+              <input 
+                type="range"
+                min="10000"
+                max="50000"
+                step="1000"
+                value={price}
+                onChange={e => setPrice(parseInt(e.target.value))}
+                className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+              />
+
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-1">
+                      <BarChart3 size={10} /> 예상 판매량 지수
+                    </span>
+                    <div className="flex items-center gap-2">
+                       <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-300 ${priceElasticity > 1 ? 'bg-emerald-500' : 'bg-red-500'}`} 
+                            style={{ width: `${Math.min(100, priceElasticity * 50)}%` }} 
+                          />
+                       </div>
+                       <span className={`text-xs font-bold ${priceElasticity > 1 ? 'text-emerald-500' : 'text-red-500'}`}>
+                         x{priceElasticity.toFixed(1)}
+                       </span>
+                    </div>
+                 </div>
+                 <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-zinc-500 uppercase flex items-center gap-1">
+                      <TrendingUp size={10} /> 예상 수익성 지수
+                    </span>
+                    <div className="flex items-center gap-2">
+                       <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-500 transition-all duration-300" 
+                            style={{ width: `${Math.min(100, (priceElasticity * (price / BASE_ALBUM_PRICE)) * 50)}%` }} 
+                          />
+                       </div>
+                       <span className="text-xs font-bold text-blue-400">
+                         x{(priceElasticity * (price / BASE_ALBUM_PRICE)).toFixed(1)}
+                       </span>
+                    </div>
+                 </div>
               </div>
+              <p className="text-[10px] text-zinc-600 mt-2 italic flex items-center gap-1">
+                 <Info size={10} /> 인지도가 높을수록 고가 전략을 취해도 판매량이 덜 하락합니다.
+              </p>
            </div>
 
            {/* Footer */}
-           <div className="flex gap-4 pt-4">
+           <div className="flex gap-4 pt-4 border-t border-zinc-800">
               <div className="flex-1 flex flex-col gap-1">
-                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">예상 제작 비용</span>
+                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">기본 제작 비용</span>
                  <span className={`text-lg font-bold ${canAfford ? 'text-emerald-500' : 'text-red-500'}`}>₩{cost.toLocaleString()}</span>
               </div>
               <button
@@ -144,7 +199,9 @@ const AlbumProductionModal: React.FC<Props> = ({ isOpen, onClose, activeTrainees
                 <Disc className="text-pink-500 animate-spin-slow" size={48} />
              </div>
              <h3 className="text-3xl font-black text-white mb-2">"{title}"</h3>
-             <p className="text-zinc-400 mb-8">선택하신 컨셉으로 앨범 제작을 시작하시겠습니까?<br/>제작 즉시 결과가 발표됩니다.</p>
+             <p className="text-zinc-400 mb-8">
+               {selectedConcept} 컨셉, 장당 ₩{price.toLocaleString()} 가격으로<br/>앨범 제작을 시작하시겠습니까?
+             </p>
              <div className="flex gap-4 w-full max-w-sm">
                 <button onClick={() => setIsConfirming(false)} className="flex-1 py-4 bg-zinc-800 text-zinc-400 font-bold rounded-2xl">취소</button>
                 <button onClick={handleFinalProduce} className="flex-1 py-4 bg-pink-600 text-white font-black rounded-2xl shadow-xl shadow-pink-900/40">컴백 시작!</button>

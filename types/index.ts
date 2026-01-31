@@ -47,6 +47,7 @@ export interface Album {
   concept: AlbumConcept;
   releaseWeek: number;
   quality: number; // 0-100
+  price: number; // 앨범 판매가 추가
   sales: number;
   peakChart: number; // 1-100
   isBillboard: boolean;

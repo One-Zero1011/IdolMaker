@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Album } from '../../types/index';
-import { Disc, TrendingUp, Users, Award, Trophy, Globe } from 'lucide-react';
+import { Disc, TrendingUp, Users, Award, Trophy, Globe, Wallet } from 'lucide-react';
 import { ALBUM_CONCEPTS } from '../../data/constants';
 
 interface Props {
@@ -47,6 +47,9 @@ const AlbumHistory: React.FC<Props> = ({ albums }) => {
                              {concept.label}
                           </span>
                           <span className="text-zinc-500 text-[10px] font-mono">WK {album.releaseWeek}</span>
+                          <span className="text-zinc-600 text-[10px] flex items-center gap-1 ml-auto">
+                            <Wallet size={10} /> ₩{album.price.toLocaleString()}
+                          </span>
                        </div>
                        <h3 className="text-lg font-bold text-white truncate mb-1">{album.title}</h3>
                     </div>
