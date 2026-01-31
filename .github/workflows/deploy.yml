@@ -1,3 +1,4 @@
+
 name: Deploy to GitHub Pages
 
 on:
@@ -20,15 +21,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # 캐시 설정을 제거하여 package-lock.json 파일이 없어도 오류가 나지 않게 합니다.
+          
       - name: Install dependencies
         run: npm install
+        
       - name: Build
         run: npm run build
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
