@@ -1,5 +1,5 @@
 
-import { MBTI, Trainee, WeeklyPlan, TraineeStatus, DailyLog, FacilitiesState, RankingEntry, Album, Group } from '../types/index';
+import { MBTI, Trainee, WeeklyPlan, TraineeStatus, DailyLog, FacilitiesState, RankingEntry, Album, Group, Stats } from '../types/index';
 import { MBTI_GROUPS, SCHEDULE_EFFECTS, DAYS, SCANDAL_EVENTS, RANDOM_EVENTS, NPC_GROUPS } from '../data/constants';
 import { getRandomMbtiLog } from '../data/mbti/index';
 
@@ -60,8 +60,9 @@ export const processWeek = (
       if (activity !== 'Rest') {
         if (trainee.stamina <= 0) isSuccess = false;
         else {
-          const relevantStatAvg = Object.values(effects.stats).length > 0 
-            ? Object.values(effects.stats).reduce((a, b) => a + b, 0) / Object.values(effects.stats).length
+          const statsValues = Object.values(effects.stats).filter((v): v is number => v !== undefined);
+          const relevantStatAvg = statsValues.length > 0 
+            ? statsValues.reduce((a, b) => a + b, 0) / statsValues.length
             : 50;
           const successChance = (trainee.stamina * 0.7) + (relevantStatAvg * 0.3);
           isSuccess = Math.random() * 100 < successChance;
@@ -85,8 +86,10 @@ export const processWeek = (
       const newStats = { ...trainee.stats };
       const statBonusMultiplier = isSuccess ? 1.0 : 0.5;
       Object.entries(effects.stats).forEach(([stat, value]) => {
-        // @ts-ignore
-        newStats[stat] = Math.min(100, newStats[stat] + (value * efficiencyMultiplier * statBonusMultiplier));
+        const statKey = stat as keyof Stats;
+        if (value !== undefined) {
+          newStats[statKey] = Math.min(100, (newStats[statKey] ?? 0) + (value * efficiencyMultiplier * statBonusMultiplier));
+        }
       });
 
       if (!isSuccess && activity !== 'Rest') {

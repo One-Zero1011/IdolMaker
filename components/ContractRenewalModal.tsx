@@ -16,13 +16,14 @@ const ContractRenewalModal: React.FC<Props> = ({ isOpen, onClose, trainee, funds
   if (!isOpen || !trainee) return null;
 
   // 재계약 비용 계산 로직
-  const avgStats = Object.values(trainee.stats).reduce((a, b) => a + b, 0) / 5;
+  // Fix: Explicitly cast Object.values to number[] for the reduction operation
+  const avgStats = (Object.values(trainee.stats) as number[]).reduce((a, b) => a + b, 0) / 5;
   const renewalCost = Math.floor(50000 + (trainee.fans * 20) + (avgStats * 1000));
   const canAfford = funds >= renewalCost;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-lg p-4 animate-in fade-in duration-300">
-      <div className="bg-zinc-900 border border-zinc-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="bg-zinc-900 border border-zinc-700 w-full max-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         
         {/* Header */}
         <div className="p-6 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center">

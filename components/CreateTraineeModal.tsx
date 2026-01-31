@@ -288,7 +288,8 @@ const TraineeFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, funds, ini
                            </div>
                            <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
                               <div 
-                                className={`h-full transition-all duration-1000 ${val > 80 ? 'bg-yellow-500' : val > 50 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                                // Fix: Explicitly cast 'val' as number to avoid TypeScript 'unknown' comparison error
+                                className={`h-full transition-all duration-1000 ${(val as number) > 80 ? 'bg-yellow-500' : (val as number) > 50 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
                                 style={{ width: `${val}%` }} 
                               />
                            </div>
