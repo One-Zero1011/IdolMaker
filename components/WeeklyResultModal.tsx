@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GameLog } from '../types/index';
-import { X, AlertOctagon, CheckCircle2, MessageSquare, ArrowRight, Check, Sparkles, Users } from 'lucide-react';
+import { X, AlertOctagon, CheckCircle2, MessageSquare, ArrowRight, Check, Sparkles, Users, XCircle } from 'lucide-react';
 
 interface Props {
   results: GameLog | null;
@@ -72,16 +72,30 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
               </div>
             ) : (
               currentLog.logs.map((log, idx) => {
-                let type = 'normal';
                 let bgColor = 'bg-zinc-800/50';
                 let borderColor = 'border-zinc-700/50';
                 let textColor = 'text-zinc-300';
                 let Icon: any = MessageSquare;
                 let iconColor = 'text-zinc-500';
 
+                // SUCCESS [성공]
+                if (log.includes('[성공]')) {
+                  bgColor = 'bg-emerald-950/20';
+                  borderColor = 'border-emerald-900/40';
+                  textColor = 'text-emerald-100';
+                  Icon = CheckCircle2;
+                  iconColor = 'text-emerald-500';
+                }
+                // FAILURE [실패]
+                else if (log.includes('[실패]')) {
+                  bgColor = 'bg-red-950/20';
+                  borderColor = 'border-red-900/40';
+                  textColor = 'text-red-100';
+                  Icon = XCircle;
+                  iconColor = 'text-red-500';
+                }
                 // CRITICAL / DANGER (Red)
-                if (log.includes('[비보]') || log.includes('[충격]') || log.includes('퇴출') || log.includes('탈진') || log.includes('부상')) {
-                  type = 'critical';
+                else if (log.includes('[비보]') || log.includes('[충격]') || log.includes('퇴출') || log.includes('탈진') || log.includes('부상')) {
                   bgColor = 'bg-red-950/30';
                   borderColor = 'border-red-900/50';
                   textColor = 'text-red-200';
@@ -90,7 +104,6 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                 }
                 // RANDOM EVENT (Sparkles)
                 else if (log.includes('[이벤트]')) {
-                  type = 'event';
                   bgColor = 'bg-blue-950/30';
                   borderColor = 'border-blue-800/50';
                   textColor = 'text-blue-200';
@@ -99,7 +112,6 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                 }
                 // RELATIONSHIP EVENT (Users)
                 else if (log.includes('[관계]')) {
-                  type = 'relationship';
                   bgColor = 'bg-purple-950/30';
                   borderColor = 'border-purple-800/50';
                   textColor = 'text-purple-200';
@@ -108,21 +120,11 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                 }
                 // MAJOR WARNING (Orange/Red)
                 else if (log.includes('[논란]') || log.includes('[경고]') || log.includes('갈등') || log.includes('불안정')) {
-                  type = 'warning';
                   bgColor = 'bg-orange-950/40';
                   borderColor = 'border-orange-800/50';
                   textColor = 'text-orange-200';
                   Icon = AlertOctagon;
                   iconColor = 'text-orange-500';
-                }
-                // SUCCESS (Green)
-                else if (log.includes('바이럴') || log.includes('완벽') || log.includes('칭찬') || log.includes('조공')) {
-                  type = 'success';
-                  bgColor = 'bg-emerald-950/30';
-                  borderColor = 'border-emerald-900/50';
-                  textColor = 'text-emerald-200';
-                  Icon = CheckCircle2;
-                  iconColor = 'text-emerald-500';
                 }
 
                 return (

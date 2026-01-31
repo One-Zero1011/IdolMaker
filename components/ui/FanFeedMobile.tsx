@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Smartphone, X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star } from 'lucide-react';
+import { Smartphone, X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star, AlertCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Trainee as Idol } from '../../types/index';
 import { FAN_NICKNAMES, RANDOM_HANDLES, NEWS_SOURCES, TWEET_TEMPLATES } from '../../data/fanData';
 
@@ -14,7 +14,7 @@ interface Tweet {
   time: string;
   isVerified: boolean;
   isNew?: boolean;
-  type?: 'news' | 'fan' | 'hater' | 'worried';
+  type: 'news' | 'fan' | 'hater' | 'worried';
 }
 
 interface Props {
@@ -40,7 +40,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     return null;
   }, [historyLogs]);
 
-  const createSingleTweet = useCallback((isBatch: boolean = false) => {
+  const createSingleTweet = useCallback((isBatch: boolean = false): Tweet | null => {
     const activeArtists = trainees.filter(t => t.status === 'Active');
     if (activeArtists.length === 0) return null;
 
@@ -62,7 +62,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
         time: isBatch ? '방금 전' : '1분 전',
         isVerified: source.isVerified,
         isNew: isBatch,
-        type: 'news' as const
+        type: 'news'
       };
     }
 
@@ -100,12 +100,9 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     };
   }, [trainees, hotTopic]);
 
-  // Handle batch generation when historyLogs change (Schedule Executed)
   useEffect(() => {
     if (historyLogs.length > lastLogCount.current) {
-        // Calculate number of tweets based on total fans
         const totalFans = trainees.reduce((acc, t) => acc + t.fans, 0);
-        // 1 tweet per 100 fans, min 1, max 50 to avoid lag
         const countToGenerate = Math.min(50, Math.max(1, Math.floor(totalFans / 100)));
         
         const newBatch: Tweet[] = [];
@@ -121,7 +118,6 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     }
   }, [historyLogs, trainees, createSingleTweet]);
 
-  // Initial populate
   useEffect(() => {
     if (tweets.length === 0 && trainees.length > 0) {
       const initial = [];
@@ -132,6 +128,16 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
       setTweets(initial);
     }
   }, [trainees.length, tweets.length, createSingleTweet]);
+
+  const getTypeStyle = (type: Tweet['type']) => {
+    switch (type) {
+      case 'news': return { icon: <Newspaper size={14} />, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'NEWS' };
+      case 'fan': return { icon: <Heart size={14} className="fill-pink-500" />, color: 'text-pink-400', bg: 'bg-pink-500/10', label: 'FAN' };
+      case 'hater': return { icon: <AlertCircle size={14} />, color: 'text-red-400', bg: 'bg-red-500/10', label: 'HATER' };
+      case 'worried': return { icon: <AlertTriangle size={14} />, color: 'text-yellow-400', bg: 'bg-yellow-500/10', label: 'CAUTION' };
+      default: return { icon: <Star size={14} />, color: 'text-zinc-400', bg: 'bg-zinc-500/10', label: 'POST' };
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -179,63 +185,70 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                 </div>
             ) : (
                 <div className="flex flex-col">
-                    {tweets.map((tweet, idx) => (
-                        <div 
-                          key={tweet.id} 
-                          className={`
-                            p-4 border-b border-zinc-900/50 transition-all duration-700
-                            ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}
-                            ${tweet.type === 'news' ? 'bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg' : ''}
-                            ${tweet.type === 'hater' ? 'bg-red-950/5' : ''}
-                          `}
-                        >
-                            <div className="flex gap-3">
-                                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold overflow-hidden shadow-inner
-                                  ${tweet.type === 'news' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-zinc-700 to-zinc-900 text-zinc-400'}
-                                `}>
-                                    {tweet.type === 'news' ? <Newspaper size={18} /> : tweet.user[0]}
-                                </div>
+                    {tweets.map((tweet) => {
+                        const style = getTypeStyle(tweet.type);
+                        return (
+                          <div 
+                            key={tweet.id} 
+                            className={`
+                              p-4 border-b border-zinc-900/50 transition-all duration-700
+                              ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}
+                              ${tweet.type === 'news' ? 'bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg' : ''}
+                              ${tweet.type === 'hater' ? 'bg-red-950/5 border-l-4 border-l-red-500/40' : ''}
+                              ${tweet.type === 'worried' ? 'bg-yellow-900/5 border-l-4 border-l-yellow-500/40' : ''}
+                            `}
+                          >
+                              <div className="flex gap-3">
+                                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold overflow-hidden shadow-inner
+                                    ${tweet.type === 'news' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-zinc-700 to-zinc-900 text-zinc-400'}
+                                  `}>
+                                      {tweet.type === 'news' ? <Newspaper size={18} /> : tweet.user[0]}
+                                  </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <div className="flex items-center gap-1 min-w-0">
-                                            <span className={`text-sm font-bold truncate ${tweet.type === 'news' ? 'text-blue-400' : 'text-zinc-200'}`}>
-                                                {tweet.user}
-                                            </span>
-                                            {tweet.isVerified && <CheckCircle2 size={12} className="text-blue-500 fill-blue-500 flex-shrink-0" />}
-                                        </div>
-                                        <span className="text-zinc-600 text-[10px] flex-shrink-0">{tweet.time}</span>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-1 mb-1">
-                                       <span className="text-zinc-500 text-[11px] truncate">{tweet.handle}</span>
-                                    </div>
+                                  <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                          <div className="flex items-center gap-1 min-w-0">
+                                              <span className={`text-sm font-bold truncate ${tweet.type === 'news' ? 'text-blue-400' : 'text-zinc-200'}`}>
+                                                  {tweet.user}
+                                              </span>
+                                              {tweet.isVerified && <CheckCircle2 size={12} className="text-blue-500 fill-blue-500 flex-shrink-0" />}
+                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black ml-1 ${style.bg} ${style.color}`}>
+                                                  {style.icon} {style.label}
+                                              </div>
+                                          </div>
+                                          <span className="text-zinc-600 text-[10px] flex-shrink-0">{tweet.time}</span>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-1 mb-1">
+                                         <span className="text-zinc-500 text-[11px] truncate">{tweet.handle}</span>
+                                      </div>
 
-                                    <p className={`text-sm leading-snug mb-3 whitespace-pre-wrap break-words
-                                      ${tweet.type === 'news' ? 'font-bold text-zinc-100' : 'text-zinc-300'}
-                                      ${tweet.type === 'hater' ? 'text-zinc-400 italic' : ''}
-                                    `}>
-                                        {tweet.text}
-                                    </p>
+                                      <p className={`text-sm leading-snug mb-3 whitespace-pre-wrap break-words
+                                        ${tweet.type === 'news' ? 'font-bold text-zinc-100' : 'text-zinc-300'}
+                                        ${tweet.type === 'hater' ? 'text-zinc-400 italic' : ''}
+                                      `}>
+                                          {tweet.text}
+                                      </p>
 
-                                    <div className="flex justify-between text-zinc-600 max-w-[220px]">
-                                        <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
-                                            <MessageCircle size={14} /> <span className="text-[10px]">{Math.floor(tweet.likes/12)}</span>
-                                        </button>
-                                        <button className="flex items-center gap-1.5 hover:text-green-400 transition-colors">
-                                            <Repeat2 size={14} /> <span className="text-[10px]">{tweet.retweets}</span>
-                                        </button>
-                                        <button className="flex items-center gap-1.5 hover:text-pink-400 transition-colors">
-                                            <Heart size={14} className={tweet.likes > 2000 ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
-                                        </button>
-                                        <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
-                                            <Share size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                                      <div className="flex justify-between text-zinc-600 max-w-[220px]">
+                                          <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
+                                              <MessageCircle size={14} /> <span className="text-[10px]">{Math.floor(tweet.likes/12)}</span>
+                                          </button>
+                                          <button className="flex items-center gap-1.5 hover:text-green-400 transition-colors">
+                                              <Repeat2 size={14} /> <span className="text-[10px]">{tweet.retweets}</span>
+                                          </button>
+                                          <button className="flex items-center gap-1.5 hover:text-pink-400 transition-colors">
+                                              <Heart size={14} className={tweet.likes > 2000 || tweet.type === 'fan' ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
+                                          </button>
+                                          <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
+                                              <Share size={14} />
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

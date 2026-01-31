@@ -2,9 +2,22 @@
 import { ScheduleType, FacilityType, SpecialEvent, AlbumConcept } from '../types/index';
 
 export const INITIAL_FUNDS = 500000; 
-export const BASE_ALBUM_PRICE = 20000; // 적정 앨범 가격
+export const BASE_ALBUM_PRICE = 20000; 
 
 export const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+
+export const NPC_GROUPS = [
+  { name: 'NEO JEANS', song: 'Super Shy', basePower: 8500 },
+  { name: 'BLACK VEIL', song: 'Shut Down', basePower: 9200 },
+  { name: 'IVE-RY', song: 'I AM', basePower: 8800 },
+  { name: 'AESPA-RE', song: 'Spicy', basePower: 8200 },
+  { name: 'LE SSERAFIM-X', song: 'UNFORGIVEN', basePower: 8000 },
+  { name: 'TWICE-AGAIN', song: 'SET ME FREE', basePower: 7500 },
+  { name: 'STAY-C', song: 'Teddy Bear', basePower: 6800 },
+  { name: 'N-MIX', song: 'Love Me Like This', basePower: 6500 },
+  { name: 'BABY-MON', song: 'BATTER UP', basePower: 7200 },
+  { name: 'KISS OF LIFE-R', song: 'Shhh', basePower: 6000 }
+];
 
 export const MBTI_GROUPS = {
   Analysts: ['INTJ', 'INTP', 'ENTJ', 'ENTP'],
@@ -291,6 +304,18 @@ export const FAN_REACTIONS = {
     "[SNS] 애들 얼굴 반쪽 됐어... 제발 잠 좀 재워줘라.",
     "[SNS] 오늘 라이브에서 표정 안 좋던데 어디 아픈 거 아니지?",
     "[SNS] 건강이 제일 중요해. 무리하지 말고 쉬었으면 좋겠다."
+  ],
+  PRICE_PRAISE: [
+    "[SNS] 기획사 미쳤나 봐... 이 퀄리티에 이 가격? 완전 혜자임 ㅠㅠ",
+    "[SNS] 아티스트 생각하는 마음이 느껴짐. 가격 부담 없어서 너무 좋다.",
+    "[SNS] 대중성 노린 가격 책정 굿굿! 이번에 입덕할 사람 많을 듯.",
+    "[SNS] 앨범 한 장 더 산다... 가격 너무 착해서 감동받음."
+  ],
+  PRICE_RESISTANCE: [
+    "[SNS] 앨범 가격 실화냐? 팬들이 호구로 보이나 봄.",
+    "[SNS] 상술이 너무 심함... 기획사 돈독 오른 거 티 난다.",
+    "[SNS] 애들 성적 깎아먹으려고 작정했나. 가격 때문에 선뜻 못 사겠음.",
+    "[SNS] 비싸도 너무 비쌈. 차라리 그 돈으로 스트리밍 돌리는 게 나을 듯."
   ]
 };
 

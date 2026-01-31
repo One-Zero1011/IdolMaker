@@ -12,9 +12,9 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { X, Trophy, TrendingUp, Users, Wallet, Disc, Sparkles, Globe, ArrowUpRight } from 'lucide-react';
+import { X, Trophy, TrendingUp, Users, Wallet, Disc, Sparkles, Globe, ArrowUpRight, AlertCircle, ThumbsUp } from 'lucide-react';
 import { Album } from '../../types/index';
-import { FAN_REACTIONS } from '../../data/constants';
+import { FAN_REACTIONS, BASE_ALBUM_PRICE } from '../../data/constants';
 
 interface Props {
   isOpen: boolean;
@@ -70,7 +70,6 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
 
   useEffect(() => {
     if (isOpen && album && !isFinished) {
-      // 속도 조절: 2000ms (2초)로 변경하여 더 천천히 진행
       const interval = setInterval(() => {
         setCurrentDay(prev => {
           if (prev < 6) {
@@ -80,8 +79,18 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
             setAccumulatedSales(data.accSales);
             setAccumulatedRevenue(Math.floor((data.accSales / album.sales) * totalRevenue));
             
-            // 실시간 반응 추가
-            const reactionPool = [...FAN_REACTIONS.POSITIVE, ...FAN_REACTIONS.NEGATIVE, ...FAN_REACTIONS.WORRIED];
+            // 실시간 반응 로직 강화 (가격 기반)
+            const priceRatio = album.price / BASE_ALBUM_PRICE;
+            let reactionPool = [...FAN_REACTIONS.POSITIVE];
+
+            if (priceRatio > 1.2 && Math.random() > 0.5) {
+                reactionPool = FAN_REACTIONS.PRICE_RESISTANCE;
+            } else if (priceRatio < 0.8 && Math.random() > 0.5) {
+                reactionPool = FAN_REACTIONS.PRICE_PRAISE;
+            } else if (Math.random() > 0.8) {
+                reactionPool = [...FAN_REACTIONS.WORRIED, ...FAN_REACTIONS.NEGATIVE];
+            }
+
             setReactions(prevR => [reactionPool[Math.floor(Math.random() * reactionPool.length)], ...prevR].slice(0, 3));
             
             return nextDay;
@@ -91,7 +100,7 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
             return prev;
           }
         });
-      }, 2000);
+      }, 1500); // 1.5초 간격
 
       return () => clearInterval(interval);
     }
@@ -102,7 +111,6 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
   const handleSettle = () => {
     onSettle();
     onClose();
-    // Reset state for next time
     setCurrentDay(0);
     setChartData([]);
     setAccumulatedRevenue(0);
@@ -110,6 +118,9 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
     setIsFinished(false);
     setReactions([]);
   };
+
+  const isExpensive = album.price > BASE_ALBUM_PRICE;
+  const isCheap = album.price < BASE_ALBUM_PRICE;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 animate-in fade-in duration-500">
@@ -191,24 +202,20 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
                  </ResponsiveContainer>
               </div>
 
-              {/* Real-time Ticker Stats */}
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 flex flex-col">
-                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                       <Trophy size={10} className="text-yellow-500" /> 최고 순위
-                    </span>
-                    <div className="text-3xl font-black text-white flex items-end gap-1">
-                       {isFinished ? album.peakChart : chartData[currentDay]?.rank || '-'} <span className="text-xs text-zinc-500 font-bold mb-1.5 uppercase">위</span>
-                    </div>
-                 </div>
-                 <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 flex flex-col">
-                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                       <Users size={10} className="text-blue-500" /> 총 판매량
-                    </span>
-                    <div className="text-3xl font-black text-white flex items-end gap-1">
-                       {accumulatedSales.toLocaleString()} <span className="text-xs text-zinc-500 font-bold mb-1.5 uppercase">장</span>
-                    </div>
-                 </div>
+              {/* Price Feedback Alert */}
+              <div className="animate-in fade-in duration-500">
+                {isExpensive && (
+                   <div className="bg-red-950/20 border border-red-900/40 p-4 rounded-2xl flex items-center gap-3">
+                      <AlertCircle className="text-red-500 shrink-0" size={20} />
+                      <p className="text-xs text-red-300"><b>가격 주의:</b> 높은 앨범 가격으로 인해 팬덤의 저항이 거셉니다. 평판 하락 리스크가 있습니다.</p>
+                   </div>
+                )}
+                {isCheap && (
+                   <div className="bg-emerald-950/20 border border-emerald-900/40 p-4 rounded-2xl flex items-center gap-3">
+                      <ThumbsUp className="text-emerald-500 shrink-0" size={20} />
+                      <p className="text-xs text-emerald-300"><b>갓기획사 찬양:</b> 저렴한 가격 책정에 대중이 열광하고 있습니다. 평판 보너스가 예상됩니다.</p>
+                   </div>
+                )}
               </div>
            </div>
 
@@ -234,7 +241,11 @@ const AlbumReleaseSimulationModal: React.FC<Props> = ({ isOpen, album, totalReve
                     <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">SNS 실시간 여론</div>
                     <div className="space-y-2 min-h-[120px]">
                        {reactions.length > 0 ? reactions.map((r, i) => (
-                         <div key={i} className="bg-zinc-900/50 p-3 rounded-xl border border-zinc-800/50 text-[11px] text-zinc-300 italic animate-in fade-in slide-in-from-bottom-2 duration-300">
+                         <div key={i} className={`p-3 rounded-xl border text-[11px] italic animate-in fade-in slide-in-from-bottom-2 duration-300
+                            ${r.includes('상술') || r.includes('호구') ? 'bg-red-900/10 border-red-800/30 text-red-300' : 
+                              r.includes('혜자') || r.includes('착해서') ? 'bg-emerald-900/10 border-emerald-800/30 text-emerald-300' : 
+                              'bg-zinc-900/50 border-zinc-800/50 text-zinc-300'}
+                         `}>
                            {r}
                          </div>
                        )) : (

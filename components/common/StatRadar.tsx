@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   ResponsiveContainer,
@@ -12,11 +13,15 @@ import { Trainee } from '../../types/index';
 import { TRANSLATIONS } from '../../data/constants';
 
 interface Props {
-  trainee?: Trainee;
+  trainee?: Trainee | null;
 }
 
 const StatRadar: React.FC<Props> = ({ trainee }) => {
-  if (!trainee) return null;
+  if (!trainee || !trainee.stats) return (
+    <div className="flex items-center justify-center h-full text-zinc-600 italic text-xs">
+      데이터를 분석할 연습생이 없습니다.
+    </div>
+  );
 
   const radarData = [
     { subject: '보컬', A: trainee.stats.vocal, fullMark: 100 },

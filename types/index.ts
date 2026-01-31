@@ -3,6 +3,8 @@ export type Position = 'Main Vocal' | 'Main Dancer' | 'Main Rapper' | 'Visual' |
 
 export type Gender = 'Male' | 'Female';
 
+export type GroupType = 'Boy Group' | 'Girl Group' | 'Co-ed Group';
+
 export type MBTI = 
   | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' 
   | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' 
@@ -39,6 +41,14 @@ export interface Trainee {
   contractRemaining: number; 
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  memberIds: string[];
+  type: GroupType;
+  formedWeek: number;
+}
+
 export type AlbumConcept = 'Refreshing' | 'Dark' | 'High-teen' | 'Girl Crush' | 'Retro';
 
 export interface Album {
@@ -46,11 +56,21 @@ export interface Album {
   title: string;
   concept: AlbumConcept;
   releaseWeek: number;
-  quality: number; // 0-100
-  price: number; // 앨범 판매가 추가
+  quality: number; 
+  price: number; 
   sales: number;
-  peakChart: number; // 1-100
+  peakChart: number; 
   isBillboard: boolean;
+}
+
+export interface RankingEntry {
+  rank: number;
+  prevRank: number;
+  groupName: string;
+  songTitle: string;
+  score: number;
+  isPlayer: boolean;
+  trend: 'up' | 'down' | 'same' | 'new';
 }
 
 export type ScheduleType = 
