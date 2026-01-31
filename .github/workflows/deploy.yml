@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # 혹은 마스터 브랜치 이름 (master)
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -26,7 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
           
       - name: Install dependencies
         run: npm install
