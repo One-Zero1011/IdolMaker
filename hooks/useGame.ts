@@ -34,7 +34,7 @@ export const useGame = () => {
   const [historyLogs, setHistoryLogs] = useState<string[]>([]);
   
   const [currentSpecialEvent, setCurrentSpecialEvent] = useState<SpecialEvent | null>(null);
-  const [lastParticipatedEvent, setLastParticipatedEvent] = useState<SpecialEvent | null>(null); // 이번 주 참여한 이벤트 추적
+  const [lastParticipatedEvent, setLastParticipatedEvent] = useState<SpecialEvent | null>(null); 
   const [pendingDecision, setPendingDecision] = useState(false);
 
   const [notification, setNotification] = useState<NotificationState>({
@@ -200,15 +200,14 @@ export const useGame = () => {
     const randomFactor = 0.8 + Math.random() * 0.4;
     const finalQuality = Math.min(100, Math.floor(baseQuality * randomFactor));
     
-    const priceElasticity = Math.pow(BASE_ALBUM_PRICE / price, 1.8); // 가격 탄력성 강화 (고가일 때 더 가파르게 하락)
+    const priceElasticity = Math.pow(BASE_ALBUM_PRICE / price, 2.0); // 가격 탄력성 추가 강화
     
-    // 수익 밸런스 대폭 하향 조정 (명성 영향력 강화, 기본치 하락)
-    // 인지도 10 기준: (80/10) * (10^1.6) * 3 = 8 * 40 * 3 = 약 960장
-    const baseSales = (finalQuality / 10) * Math.pow(reputation, 1.6) * 3;
-    const finalSales = Math.floor(baseSales * priceElasticity + (Math.random() * reputation * 30));
+    // [밸런스 대폭 하향] 계수를 3 -> 0.8로 하향 조정. 평판이 낮으면 앨범 제작비를 건지기도 어려움.
+    const baseSales = (finalQuality / 10) * Math.pow(reputation, 1.6) * 0.8;
+    const finalSales = Math.floor(baseSales * priceElasticity + (Math.random() * reputation * 15));
     
-    const chartRank = Math.max(1, Math.min(100, 101 - Math.floor(finalQuality * (reputation / 100) * (priceElasticity > 1 ? 1 : priceElasticity) + Math.random() * 15)));
-    const isBillboard = finalQuality > 90 && reputation > 85 && priceElasticity >= 0.9;
+    const chartRank = Math.max(1, Math.min(100, 101 - Math.floor(finalQuality * (reputation / 100) * (priceElasticity > 1 ? 1 : priceElasticity) + Math.random() * 10)));
+    const isBillboard = finalQuality > 92 && reputation > 88 && priceElasticity >= 0.95;
     
     setFunds(prev => prev - productionCost);
     setLastAlbumWeek(week);
@@ -230,14 +229,14 @@ export const useGame = () => {
 
   const settleAlbumRevenue = (album: Album, totalRevenue: number) => {
     setFunds(prev => prev + totalRevenue);
-    setReputation(prev => Math.min(100, prev + (album.quality / 30))); 
+    setReputation(prev => Math.min(100, prev + (album.quality / 40))); 
     setAlbums(prev => [album, ...prev]);
     
     setTrainees(prev => prev.map(t => t.status === 'Active' ? { 
       ...t, 
-      fans: t.fans + Math.floor(album.sales / 80), // 팬 유입 난이도 추가 상승
-      stamina: Math.max(0, t.stamina - 40),
-      mental: Math.max(0, t.mental - 30)
+      fans: t.fans + Math.floor(album.sales / 120), // 팬 유입 난이도 추가 상승
+      stamina: Math.max(0, t.stamina - 45),
+      mental: Math.max(0, t.mental - 35)
     } : t));
 
     const logText = `💿 [컴백 결과] '${album.title}' 활동 정산 완료. 수익: ₩${totalRevenue.toLocaleString()}`;
@@ -323,7 +322,7 @@ export const useGame = () => {
 
     if (participate) {
       const event = currentSpecialEvent;
-      setLastParticipatedEvent(event); // 이번 주 참여 이벤트로 저장
+      setLastParticipatedEvent(event); 
       
       if (event.costs.funds) setFunds(prev => prev - (event.costs.funds || 0));
       
@@ -360,11 +359,10 @@ export const useGame = () => {
 
     const { updatedTrainees, dailyLogs, flatLogs, fundChange, reputationChange } = processWeek(trainees, weeklyPlan, facilities, reputation);
     
-    // 만약 이번 주에 특별 이벤트에 참여했다면, 마지막 날(일요일) 로그에 결과를 추가합니다.
     if (lastParticipatedEvent) {
       const eventLog = `✨ [시즌 이벤트] '${lastParticipatedEvent.title}' 활동을 성공적으로 마쳤습니다! (+팬덤, +명성)`;
       dailyLogs[6].logs.push(eventLog);
-      setLastParticipatedEvent(null); // 사용 후 초기화
+      setLastParticipatedEvent(null); 
     }
 
     const finalizedTrainees: Trainee[] = updatedTrainees.map((t: Trainee) => {

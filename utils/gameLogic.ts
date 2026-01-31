@@ -60,8 +60,8 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
 
       let dailyPrice = effects.price;
       if (dailyPrice > 0) {
-        // 평판에 따른 수익 보너스 적용
-        const baseBonus = Math.floor(trainee.fans * 50); 
+        // [밸런스 조정] 팬 1명당 수익을 50원에서 5원으로 하향
+        const baseBonus = Math.floor(trainee.fans * 5); 
         dailyPrice = Math.floor((dailyPrice + baseBonus) * reputationMultiplier);
       }
       totalFundChange += dailyPrice;
@@ -75,12 +75,12 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
         const log2 = `🚑 ${trainee.name}: 탈진 상태에서 활동 강행. 평판이 하락합니다.`;
         currentDayEvents.push(log2);
         flatLogs.push(`[${dayName}] ${log2}`);
-        reputationPoints -= 1; // 건강 관리 부실로 평판 하락
+        reputationPoints -= 1; 
         return { 
             ...trainee, 
-            mental: Math.max(0, trainee.mental - 10),
-            sentiment: Math.max(0, trainee.sentiment - 5), 
-            status: Math.random() < 0.1 ? 'Hospitalized' : 'Active' 
+            mental: Math.max(0, trainee.mental - 15),
+            sentiment: Math.max(0, trainee.sentiment - 10), 
+            status: Math.random() < 0.15 ? 'Hospitalized' : 'Active' 
         };
       }
 
@@ -120,7 +120,8 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
         }
       }
 
-      const newStamina = Math.min(100, Math.max(0, trainee.stamina + (trainee.stamina > 0 ? effects.stamina : 0)));
+      // [버그 수정] 체력이 0일 때도 회복 수치(effects.stamina)가 적용되도록 조건문 제거
+      const newStamina = Math.min(100, Math.max(0, trainee.stamina + effects.stamina));
       const newMental = Math.min(100, Math.max(0, trainee.mental + effects.mental));
       let newSentiment = trainee.sentiment;
       let newScandalRisk = trainee.scandalRisk + effects.risk;
@@ -134,7 +135,7 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
         if (severityRoll < 5) {
             const event = SCANDAL_EVENTS.CRITICAL[Math.floor(Math.random() * SCANDAL_EVENTS.CRITICAL.length)];
             const isEliminated = Math.random() < 0.5; 
-            reputationPoints -= 10; // 스캔들 치명타
+            reputationPoints -= 10; 
             if (isEliminated) {
                 newStatus = 'Eliminated';
                 const log = `🚫 [비보] ${trainee.name}: ${event} (퇴출됨)`;
@@ -149,7 +150,7 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
         } else if (severityRoll < 25) {
             const event = SCANDAL_EVENTS.MAJOR[Math.floor(Math.random() * SCANDAL_EVENTS.MAJOR.length)];
             newSentiment = Math.max(0, newSentiment - 15);
-            reputationPoints -= 3; // 스캔들 타격
+            reputationPoints -= 3; 
             const log = `⚠ [논란] ${trainee.name}: ${event}`;
             currentDayEvents.push(log);
             flatLogs.push(`[${dayName}] ${log}`);
@@ -184,7 +185,7 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilit
       currentDayEvents.push(eventLog);
       flatLogs.push(`[${dayName}] ${eventLog}`);
       
-      if (!isPositive) reputationPoints -= 0.5; // 불화 보도시 평판 하락
+      if (!isPositive) reputationPoints -= 0.5; 
 
       if (!t1.relationships) t1.relationships = {};
       if (!t2.relationships) t2.relationships = {};
