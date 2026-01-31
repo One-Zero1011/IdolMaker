@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Trainee, WeeklyPlan, GameLog, ScheduleType } from '../types/index';
 import { COLORS } from '../data/constants';
@@ -139,18 +138,12 @@ export const useGame = () => {
       try {
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
-        
-        // Basic Validation
         if (!parsed.trainees || !parsed.week) throw new Error("Invalid Save File");
-
         setWeek(parsed.week);
         setTrainees(parsed.trainees);
         setWeeklyPlan(parsed.weeklyPlan);
         setHistoryLogs(parsed.historyLogs);
-        
-        // After file import, also update browser storage
         localStorage.setItem(SAVE_KEY, content);
-        
         showMessage("파일 불러오기 성공", "데이터를 성공적으로 복구했습니다.", "success");
       } catch (err) {
         showMessage("파일 오류", "올바르지 않은 세이브 파일입니다.", "alert");
@@ -160,15 +153,10 @@ export const useGame = () => {
   };
 
   const resetGame = () => {
-    showMessage(
-      "게임 초기화", 
-      "정말 모든 데이터를 삭제하고 처음부터 다시 시작하시겠습니까?\n이 작업은 되돌릴 수 없습니다.", 
-      "confirm", 
-      () => {
-        localStorage.removeItem(SAVE_KEY);
-        window.location.reload();
-      }
-    );
+    showMessage("게임 초기화", "정말 모든 데이터를 삭제하고 처음부터 다시 시작하시겠습니까?", "confirm", () => {
+      localStorage.removeItem(SAVE_KEY);
+      window.location.reload();
+    });
   };
 
   const addNewTrainee = (newTraineeData: Omit<Trainee, 'id' | 'fans' | 'status' | 'history'>) => {
