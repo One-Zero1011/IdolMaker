@@ -1,6 +1,6 @@
 
-import { MBTI, Trainee, WeeklyPlan, TraineeStatus, DailyLog } from '../types/index';
-import { MBTI_GROUPS, SCHEDULE_EFFECTS, FLAVOR_TEXT, DAYS, SCANDAL_EVENTS, FAN_REACTIONS } from '../data/constants';
+import { MBTI, Trainee, WeeklyPlan, TraineeStatus, DailyLog, FacilitiesState } from '../types/index';
+import { MBTI_GROUPS, SCHEDULE_EFFECTS, FLAVOR_TEXT, DAYS, SCANDAL_EVENTS, FAN_REACTIONS, RANDOM_EVENTS } from '../data/constants';
 import { getRandomMbtiLog } from '../data/mbti/index';
 
 // --- Logic Helpers ---
@@ -13,7 +13,7 @@ export const checkCompatibility = (mbti1: MBTI, mbti2: MBTI): boolean => {
   const g1 = getGroup(mbti1);
   const g2 = getGroup(mbti2);
 
-  if (g1 === g2) return false; // Same group usually clashes or is neutral
+  if (g1 === g2) return false; 
   if ((g1 === 'Analysts' && g2 === 'Sentinels') || (g1 === 'Sentinels' && g2 === 'Analysts')) return true;
   if ((g1 === 'Diplomats' && g2 === 'Explorers') || (g1 === 'Explorers' && g2 === 'Diplomats')) return true;
   
@@ -26,39 +26,56 @@ interface WeekResult {
   updatedTrainees: Trainee[];
   dailyLogs: DailyLog[];
   flatLogs: string[];
+  fundChange: number;
+  reputationChange: number;
 }
 
-export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan): WeekResult => {
+export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan, facilities: FacilitiesState, currentReputation: number): WeekResult => {
   const flatLogs: string[] = [];
   const dailyLogs: DailyLog[] = [];
-  let updatedTrainees = JSON.parse(JSON.stringify(trainees)); // Deep copy
+  let updatedTrainees = JSON.parse(JSON.stringify(trainees)); 
+  let totalFundChange = 0;
+  let reputationPoints = 0;
+
+  // 평판 보너스 배율 (0~100 기준 1.0~2.0배)
+  const reputationMultiplier = 1 + (currentReputation / 100);
 
   // Iterate 7 Days
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     const activity = weeklyPlan[dayIndex];
     const dayName = DAYS[dayIndex];
     const currentDayEvents: string[] = [];
+    const effects = SCHEDULE_EFFECTS[activity];
     
+    const facilityLevel = effects.facilityAffinity ? facilities[effects.facilityAffinity] : 1;
+    const efficiencyMultiplier = 1 + (facilityLevel - 1) * 0.2;
+
+    // 활동별 기본 평판 기여
+    if (activity === 'Street Performance') reputationPoints += 0.5;
+    if (activity === 'Live Stream') reputationPoints += 0.3;
+
     // Process each trainee for this day
     updatedTrainees = updatedTrainees.map((trainee: Trainee) => {
       if (trainee.status !== 'Active') return trainee;
 
-      // Ensure relationships object exists
-      if (!trainee.relationships) trainee.relationships = {};
+      let dailyPrice = effects.price;
+      if (dailyPrice > 0) {
+        // 평판에 따른 수익 보너스 적용
+        const baseBonus = Math.floor(trainee.fans * 50); 
+        dailyPrice = Math.floor((dailyPrice + baseBonus) * reputationMultiplier);
+      }
+      totalFundChange += dailyPrice;
 
-      // 0. Base MBTI Log
       const mbtiLog = getRandomMbtiLog(trainee.mbti);
       const log1 = `${trainee.name}: ${mbtiLog}`;
       currentDayEvents.push(log1);
       flatLogs.push(`[${dayName}] ${log1}`);
 
-      const effects = SCHEDULE_EFFECTS[activity];
-
-      // 1. Check if already exhausted
       if (trainee.stamina <= 0 && activity !== 'Rest') {
-        const log2 = `🚑 ${trainee.name}: 탈진 상태에서 활동을 강행하여 부상이 악화되었습니다.`;
+        const log2 = `🚑 ${trainee.name}: 탈진 상태에서 활동 강행. 평판이 하락합니다.`;
         currentDayEvents.push(log2);
         flatLogs.push(`[${dayName}] ${log2}`);
+        reputationPoints -= 1; // 건강 관리 부실로 평판 하락
         return { 
             ...trainee, 
             mental: Math.max(0, trainee.mental - 10),
@@ -67,114 +84,76 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan): WeekRe
         };
       }
 
-      // 2. Apply Stats
       const newStats = { ...trainee.stats };
       Object.entries(effects.stats).forEach(([stat, value]) => {
         // @ts-ignore
-        newStats[stat] = Math.min(100, newStats[stat] + value);
+        const finalValue = value * efficiencyMultiplier;
+        // @ts-ignore
+        newStats[stat] = Math.min(100, newStats[stat] + finalValue);
       });
 
-      // 3. Update Condition
-      const newStamina = Math.min(100, Math.max(0, trainee.stamina + effects.stamina));
+      const eventRoll = Math.random();
+      if (eventRoll < 0.1) {
+        const isPositive = Math.random() > 0.4;
+        const pool = isPositive ? RANDOM_EVENTS.POSITIVE : RANDOM_EVENTS.NEGATIVE;
+        const event = pool[Math.floor(Math.random() * pool.length)];
+        
+        let eventLog = `[이벤트] ${event.title}: ${event.text.replace('{name}', trainee.name)}`;
+        currentDayEvents.push(eventLog);
+        flatLogs.push(`[${dayName}] ${eventLog}`);
+
+        const effect = event.effect as any;
+        if (effect.fans) {
+            const finalFanGain = Math.floor(effect.fans * reputationMultiplier);
+            trainee.fans = Math.max(0, trainee.fans + finalFanGain);
+            if (isPositive) reputationPoints += 0.5;
+        }
+        if (effect.mental) trainee.mental = Math.min(100, Math.max(0, trainee.mental + effect.mental));
+        if (effect.stamina) trainee.stamina = Math.min(100, Math.max(0, trainee.stamina + effect.stamina));
+        if (effect.sentiment) trainee.sentiment = Math.min(100, Math.max(0, trainee.sentiment + effect.sentiment));
+        if (effect.funds) totalFundChange += effect.funds;
+        if (effect.stats) {
+          Object.keys(newStats).forEach(s => {
+            // @ts-ignore
+            newStats[s] = Math.min(100, newStats[s] + effect.stats);
+          });
+        }
+      }
+
+      const newStamina = Math.min(100, Math.max(0, trainee.stamina + (trainee.stamina > 0 ? effects.stamina : 0)));
       const newMental = Math.min(100, Math.max(0, trainee.mental + effects.mental));
       let newSentiment = trainee.sentiment;
       let newScandalRisk = trainee.scandalRisk + effects.risk;
 
-      // 4. Calculate Risk (Scandal/Events)
       let newStatus: TraineeStatus = trainee.status;
-      
-      // Exhaustion Check
-      if (newStamina <= 0 && trainee.stamina > 0) {
-        const log3 = `💔 ${trainee.name}: ${FLAVOR_TEXT.mentalBreak[Math.floor(Math.random() * FLAVOR_TEXT.mentalBreak.length)]}`;
-        currentDayEvents.push(log3);
-        flatLogs.push(`[${dayName}] ${log3}`);
-        newSentiment = Math.max(0, newSentiment - 5);
-        if (Math.random() < 0.5) currentDayEvents.push(FAN_REACTIONS.WORRIED[0]);
-      }
-
-      // Scandal Check System
       const roll = Math.random() * 100;
       const effectiveRisk = newScandalRisk + ((100 - newMental) / 20);
       
       if (roll < effectiveRisk && activity !== 'Rest') {
         const severityRoll = Math.random() * 100;
-        const criticalThreshold = 5 + (trainee.scandalRisk / 2); 
-        const majorThreshold = 30 + (trainee.scandalRisk / 2);
-
-        if (severityRoll < criticalThreshold) {
-            // CRITICAL
+        if (severityRoll < 5) {
             const event = SCANDAL_EVENTS.CRITICAL[Math.floor(Math.random() * SCANDAL_EVENTS.CRITICAL.length)];
-            const isEliminated = Math.random() < 0.7; 
-            
+            const isEliminated = Math.random() < 0.5; 
+            reputationPoints -= 10; // 스캔들 치명타
             if (isEliminated) {
                 newStatus = 'Eliminated';
-                const log = `🚫 [비보] ${trainee.name}: ${event} (소속사 방출 결정)`;
+                const log = `🚫 [비보] ${trainee.name}: ${event} (퇴출됨)`;
                 currentDayEvents.push(log);
                 flatLogs.push(`[${dayName}] ${log}`);
             } else {
-                newSentiment = Math.max(0, newSentiment - 40);
-                const log = `🚨 [충격] ${trainee.name}: ${event} (팬덤 붕괴)`;
+                newSentiment = Math.max(0, newSentiment - 30);
+                const log = `🚨 [충격] ${trainee.name}: ${event}`;
                 currentDayEvents.push(log);
                 flatLogs.push(`[${dayName}] ${log}`);
-                currentDayEvents.push(FAN_REACTIONS.NEGATIVE[Math.floor(Math.random() * FAN_REACTIONS.NEGATIVE.length)]);
             }
-        } else if (severityRoll < majorThreshold) {
-            // MAJOR
+        } else if (severityRoll < 25) {
             const event = SCANDAL_EVENTS.MAJOR[Math.floor(Math.random() * SCANDAL_EVENTS.MAJOR.length)];
-            newSentiment = Math.max(0, newSentiment - 20);
-            const log = `⚠ [논란] ${trainee.name}: ${event} (팬덤 이탈)`;
-            currentDayEvents.push(log);
-            flatLogs.push(`[${dayName}] ${log}`);
-            currentDayEvents.push(FAN_REACTIONS.NEGATIVE[Math.floor(Math.random() * FAN_REACTIONS.NEGATIVE.length)]);
-        } else {
-            // MINOR
-            const event = SCANDAL_EVENTS.MINOR[Math.floor(Math.random() * SCANDAL_EVENTS.MINOR.length)];
-            newSentiment = Math.max(0, newSentiment - 5);
-            const log = `💬 [구설수] ${trainee.name}: ${event} (이미지 타격)`;
+            newSentiment = Math.max(0, newSentiment - 15);
+            reputationPoints -= 3; // 스캔들 타격
+            const log = `⚠ [논란] ${trainee.name}: ${event}`;
             currentDayEvents.push(log);
             flatLogs.push(`[${dayName}] ${log}`);
         }
-      }
-
-      // 5. Fan Gain Logic
-      let fanChange = 0;
-      if (activity === 'Street Performance' || activity === 'Live Stream') {
-        const performanceScore = (trainee.stats.visual + trainee.stats.dance + trainee.stats.vocal) / 3;
-        
-        if (performanceScore > 60 && newMental > 40) {
-            newSentiment = Math.min(100, newSentiment + 2);
-            if (Math.random() < 0.3) {
-                currentDayEvents.push(FAN_REACTIONS.POSITIVE[Math.floor(Math.random() * FAN_REACTIONS.POSITIVE.length)]);
-            }
-        }
-        let baseGain = Math.floor(Math.random() * 15) + Math.floor(performanceScore / 4);
-        const sentimentMultiplier = (newSentiment - 20) / 30; 
-        fanChange = Math.floor(baseGain * sentimentMultiplier);
-        
-        if (newMental < 30) {
-             fanChange = -30; 
-             newSentiment = Math.max(0, newSentiment - 5);
-             const log6 = `📉 ${trainee.name}가 방송에서 불안정한 모습을 보였습니다.`;
-             currentDayEvents.push(log6);
-             flatLogs.push(`[${dayName}] ${log6}`);
-             if (Math.random() < 0.5) currentDayEvents.push(FAN_REACTIONS.WORRIED[0]);
-        }
-      } 
-      else if (activity === 'Rest') {
-        if (Math.random() < 0.3) {
-          const snsGain = Math.floor(Math.random() * 10) + 5;
-          fanChange = snsGain;
-          const snsLog = `📱 ${trainee.name}가 SNS에 올린 일상 사진이 반응이 좋습니다. (+${snsGain}명)`;
-          currentDayEvents.push(snsLog);
-          flatLogs.push(`[${dayName}] ${snsLog}`);
-          newSentiment = Math.min(100, newSentiment + 1);
-        }
-      }
-      
-      if (trainee.fans > 1000 && newSentiment < 30) {
-          const bleed = -Math.floor(trainee.fans * 0.01);
-          fanChange += bleed; 
-          if (Math.random() < 0.1) currentDayEvents.push("📉 팬들이 실망하여 팬클럽을 탈퇴하고 있습니다.");
       }
 
       return {
@@ -185,9 +164,36 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan): WeekRe
         sentiment: newSentiment,
         scandalRisk: newScandalRisk,
         status: newStatus,
-        fans: Math.max(0, trainee.fans + fanChange)
+        fans: trainee.fans
       };
     });
+
+    const activeTrainees = updatedTrainees.filter((t: Trainee) => t.status === 'Active');
+    if (activeTrainees.length >= 2 && Math.random() < 0.05) {
+      const idx1 = Math.floor(Math.random() * activeTrainees.length);
+      let idx2 = Math.floor(Math.random() * activeTrainees.length);
+      while (idx1 === idx2) idx2 = Math.floor(Math.random() * activeTrainees.length);
+
+      const t1 = activeTrainees[idx1];
+      const t2 = activeTrainees[idx2];
+      const isCompatible = checkCompatibility(t1.mbti, t2.mbti);
+      const isPositive = isCompatible ? Math.random() > 0.2 : Math.random() > 0.8;
+      const event = isPositive ? RANDOM_EVENTS.RELATIONSHIP[1] : RANDOM_EVENTS.RELATIONSHIP[0];
+
+      const eventLog = `[관계] ${event.title}: ${event.text.replace('{name1}', t1.name).replace('{name2}', t2.name)}`;
+      currentDayEvents.push(eventLog);
+      flatLogs.push(`[${dayName}] ${eventLog}`);
+      
+      if (!isPositive) reputationPoints -= 0.5; // 불화 보도시 평판 하락
+
+      if (!t1.relationships) t1.relationships = {};
+      if (!t2.relationships) t2.relationships = {};
+      const change = event.effect.relationship || 0;
+      t1.relationships[t2.id] = Math.min(100, Math.max(0, (t1.relationships[t2.id] || 50) + change));
+      t2.relationships[t1.id] = Math.min(100, Math.max(0, (t2.relationships[t1.id] || 50) + change));
+      t1.mental = Math.min(100, Math.max(0, t1.mental + (event.effect.mental || 0)));
+      t2.mental = Math.min(100, Math.max(0, t2.mental + (event.effect.mental || 0)));
+    }
 
     dailyLogs.push({
       dayIndex,
@@ -196,115 +202,9 @@ export const processWeek = (trainees: Trainee[], weeklyPlan: WeeklyPlan): WeekRe
     });
   }
 
-  // --- Weekly Relationship Logic ---
-  const activeTrainees = updatedTrainees.filter((t: Trainee) => t.status === 'Active');
-  const weeklyEvents: string[] = [];
-  
-  // Create a map to easily update trainees in the array
-  const traineeMap = new Map();
-  activeTrainees.forEach((t: Trainee, idx: number) => traineeMap.set(t.id, idx));
+  // 실력 향상에 따른 평판 소폭 보너스
+  const avgVocal = updatedTrainees.reduce((acc: number, t: Trainee) => acc + t.stats.vocal, 0) / (updatedTrainees.length || 1);
+  if (avgVocal > 70) reputationPoints += 1;
 
-  for (let i = 0; i < activeTrainees.length; i++) {
-    const t1 = activeTrainees[i];
-    // Ensure relations object
-    if (!t1.relationships) t1.relationships = {};
-
-    for (let j = i + 1; j < activeTrainees.length; j++) {
-      const t2 = activeTrainees[j];
-      if (!t2.relationships) t2.relationships = {};
-
-      const isCompatible = checkCompatibility(t1.mbti, t2.mbti);
-      
-      // Init affinity if not exists (Default 50)
-      if (t1.relationships[t2.id] === undefined) t1.relationships[t2.id] = 50;
-      if (t2.relationships[t1.id] === undefined) t2.relationships[t1.id] = 50;
-
-      // Affinity Change
-      let change = 0;
-      const roll = Math.random();
-
-      // Logic: Compatibility + Random Events
-      if (isCompatible) {
-          if (roll > 0.4) change += Math.floor(Math.random() * 5); // 60% chance to increase
-      } else {
-          if (roll > 0.6) change -= Math.floor(Math.random() * 5); // 40% chance to decrease
-      }
-
-      // Shared Suffering/Success
-      if (t1.mental < 30 && t2.mental < 30) change += 2; // Trauma bond
-      if (t1.stamina < 20 && t2.stamina < 20) change -= 2; // Irritable
-
-      // Apply Change
-      const newAffinity1 = Math.min(100, Math.max(0, t1.relationships[t2.id] + change));
-      const newAffinity2 = Math.min(100, Math.max(0, t2.relationships[t1.id] + change));
-      
-      // Sync affinity (make them feel the same for simplicity, or keep slight diff)
-      const avgAffinity = Math.floor((newAffinity1 + newAffinity2) / 2);
-      t1.relationships[t2.id] = avgAffinity;
-      t2.relationships[t1.id] = avgAffinity;
-
-      // Update in main array
-      // We are mutating the objects inside `updatedTrainees` directly via reference since `activeTrainees` are refs
-      
-      // --- RELATIONSHIP EVENTS ---
-
-      // 1. High Affinity (> 80): Romance / Besties
-      if (avgAffinity > 80) {
-          // Bonus: Mental Recovery
-          t1.mental = Math.min(100, t1.mental + 5);
-          t2.mental = Math.min(100, t2.mental + 5);
-          
-          if (Math.random() < 0.15) {
-             const isDating = avgAffinity > 90;
-             if (isDating) {
-                 // DATING RISK
-                 t1.scandalRisk += 10;
-                 t2.scandalRisk += 10;
-                 if (Math.random() < 0.2) {
-                     const log = `💕 [목격] ${t1.name}와 ${t2.name}가 숙소 근처에서 몰래 만나는 모습이 포착되었습니다. (스캔들 위험 급증)`;
-                     weeklyEvents.push(log);
-                     flatLogs.push(`[주간] ${log}`);
-                 } else {
-                     const log = `💖 ${t1.name}와 ${t2.name}의 사이가 심상치 않습니다. 묘한 기류가 흐릅니다.`;
-                     weeklyEvents.push(log);
-                 }
-             } else {
-                 weeklyEvents.push(`✨ ${t1.name}와 ${t2.name}는 서로를 의지하며 힘든 연습생 생활을 버티고 있습니다. (멘탈 회복)`);
-             }
-          }
-      }
-
-      // 2. Low Affinity (< 20): Discord / Fight
-      if (avgAffinity < 20) {
-          // Penalty: Mental Drop
-          t1.mental = Math.max(0, t1.mental - 5);
-          t2.mental = Math.max(0, t2.mental - 5);
-
-          if (Math.random() < 0.2) {
-              if (avgAffinity < 10) {
-                  // Fight
-                  const log = `⚡ [불화] ${t1.name}와 ${t2.name}가 주먹 다짐을 벌였습니다! (멘탈 대폭 하락)`;
-                  weeklyEvents.push(log);
-                  flatLogs.push(`[주간] ${log}`);
-                  t1.mental -= 15; t2.mental -= 15;
-              } else {
-                  // Cold War
-                  const log = `🧊 ${t1.name}와 ${t2.name} 사이에 냉기류가 흐릅니다. 서로 말도 섞지 않습니다.`;
-                  weeklyEvents.push(log);
-                  flatLogs.push(`[주간] ${log}`);
-              }
-          }
-      }
-    }
-  }
-
-  if (weeklyEvents.length > 0) {
-    dailyLogs.push({
-      dayIndex: 7,
-      dayLabel: '관계 및 이슈',
-      logs: weeklyEvents
-    });
-  }
-
-  return { updatedTrainees, dailyLogs, flatLogs };
+  return { updatedTrainees, dailyLogs, flatLogs, fundChange: totalFundChange, reputationChange: reputationPoints };
 };

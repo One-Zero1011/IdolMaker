@@ -10,10 +10,11 @@ interface Props {
   onSelect: (id: string) => void;
   onEdit: (trainee: Trainee) => void;
   onDelete: (id: string) => void;
+  onRenew: (trainee: Trainee) => void;
   onOpenCreateModal: () => void;
 }
 
-const RosterSection: React.FC<Props> = ({ trainees, selectedTraineeId, onSelect, onEdit, onDelete, onOpenCreateModal }) => {
+const RosterSection: React.FC<Props> = ({ trainees, selectedTraineeId, onSelect, onEdit, onDelete, onRenew, onOpenCreateModal }) => {
   return (
     <section className="space-y-4 pt-4 border-t border-zinc-800/50">
       <div className="flex justify-between items-center">
@@ -37,6 +38,7 @@ const RosterSection: React.FC<Props> = ({ trainees, selectedTraineeId, onSelect,
             onClick={() => onSelect(trainee.id)}
             onEdit={onEdit}
             onDelete={onDelete}
+            onRenew={onRenew}
             selected={selectedTraineeId === trainee.id}
           />
         ))}

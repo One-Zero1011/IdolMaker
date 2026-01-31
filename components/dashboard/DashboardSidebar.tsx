@@ -23,16 +23,15 @@ const DashboardSidebar: React.FC<Props> = ({
 }) => {
   const selectedTrainee = trainees.find(t => t.id === selectedTraineeId) || activeTrainees[0];
 
-  // Helper to get relationships sorted
   const getRelationships = (trainee: Trainee) => {
     if (!trainee.relationships) return [];
     return Object.entries(trainee.relationships)
       .map(([id, score]) => {
         const target = trainees.find(t => t.id === id);
-        return { target, score };
+        return { target, score: score as number };
       })
       .filter(r => r.target && r.target.status === 'Active')
-      .sort((a, b) => b.score - a.score); // Highest first
+      .sort((a, b) => (b.score as number) - (a.score as number));
   };
 
   const relations = selectedTrainee ? getRelationships(selectedTrainee) : [];
@@ -74,7 +73,7 @@ const DashboardSidebar: React.FC<Props> = ({
           )}
       </div>
 
-      {/* Relationship Panel (New) */}
+      {/* Relationship Panel */}
       {selectedTrainee && relations.length > 0 && (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -86,13 +85,14 @@ const DashboardSidebar: React.FC<Props> = ({
                 
                 let icon = <Minus size={14} className="text-zinc-500" />;
                 let color = "text-zinc-400";
-                let text = "원만";
+                let text = "동료";
                 
-                if (score >= 80) {
+                const s = score as number;
+                if (s >= 80) {
                     icon = <Heart size={14} className="text-pink-500 fill-pink-500" />;
                     color = "text-pink-400";
-                    text = score >= 90 ? "위험한 관계" : "절친";
-                } else if (score <= 20) {
+                    text = s >= 90 ? "소울메이트" : "절친";
+                } else if (s <= 20) {
                     icon = <HeartCrack size={14} className="text-red-500" />;
                     color = "text-red-400";
                     text = "견원지간";
@@ -107,7 +107,7 @@ const DashboardSidebar: React.FC<Props> = ({
                         <span className="text-sm font-medium text-zinc-300">{target.name}</span>
                      </div>
                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold ${color}`}>{text} ({score})</span>
+                        <span className={`text-xs font-bold ${color}`}>{text} ({s})</span>
                         {icon}
                      </div>
                   </div>
@@ -137,19 +137,7 @@ const DashboardSidebar: React.FC<Props> = ({
           </div>
       </div>
 
-      {/* Small Stat Cards & History Button */}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-              <div className="text-zinc-500 text-xs uppercase font-bold">생존</div>
-              <div className="text-2xl font-bold text-white">{activeTrainees.length}</div>
-            </div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 text-center">
-              <div className="text-zinc-500 text-xs uppercase font-bold">탈락</div>
-              <div className="text-2xl font-bold text-red-500">{trainees.filter(t => t.status === 'Eliminated').length}</div>
-            </div>
-        </div>
-
         <button 
           onClick={onOpenHistory}
           className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white py-3 rounded-xl border border-zinc-700 flex items-center justify-center gap-2 transition-all font-medium text-sm"

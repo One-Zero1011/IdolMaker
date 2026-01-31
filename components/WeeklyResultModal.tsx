@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { GameLog } from '../types/index';
-import { X, AlertOctagon, CheckCircle2, MessageSquare, ArrowRight, Check } from 'lucide-react';
+import { X, AlertOctagon, CheckCircle2, MessageSquare, ArrowRight, Check, Sparkles, Users } from 'lucide-react';
 
 interface Props {
   results: GameLog | null;
@@ -75,7 +76,7 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                 let bgColor = 'bg-zinc-800/50';
                 let borderColor = 'border-zinc-700/50';
                 let textColor = 'text-zinc-300';
-                let Icon = MessageSquare;
+                let Icon: any = MessageSquare;
                 let iconColor = 'text-zinc-500';
 
                 // CRITICAL / DANGER (Red)
@@ -87,6 +88,24 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                   Icon = AlertOctagon;
                   iconColor = 'text-red-500';
                 }
+                // RANDOM EVENT (Sparkles)
+                else if (log.includes('[이벤트]')) {
+                  type = 'event';
+                  bgColor = 'bg-blue-950/30';
+                  borderColor = 'border-blue-800/50';
+                  textColor = 'text-blue-200';
+                  Icon = Sparkles;
+                  iconColor = 'text-blue-400';
+                }
+                // RELATIONSHIP EVENT (Users)
+                else if (log.includes('[관계]')) {
+                  type = 'relationship';
+                  bgColor = 'bg-purple-950/30';
+                  borderColor = 'border-purple-800/50';
+                  textColor = 'text-purple-200';
+                  Icon = Users;
+                  iconColor = 'text-purple-400';
+                }
                 // MAJOR WARNING (Orange/Red)
                 else if (log.includes('[논란]') || log.includes('[경고]') || log.includes('갈등') || log.includes('불안정')) {
                   type = 'warning';
@@ -96,17 +115,8 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                   Icon = AlertOctagon;
                   iconColor = 'text-orange-500';
                 }
-                // MINOR WARNING (Yellow/Orange)
-                else if (log.includes('[구설수]') || log.includes('주의')) {
-                  type = 'minor';
-                  bgColor = 'bg-yellow-950/20';
-                  borderColor = 'border-yellow-900/40';
-                  textColor = 'text-yellow-200';
-                  Icon = AlertOctagon;
-                  iconColor = 'text-yellow-500';
-                }
                 // SUCCESS (Green)
-                else if (log.includes('바이럴') || log.includes('완벽') || log.includes('칭찬')) {
+                else if (log.includes('바이럴') || log.includes('완벽') || log.includes('칭찬') || log.includes('조공')) {
                   type = 'success';
                   bgColor = 'bg-emerald-950/30';
                   borderColor = 'border-emerald-900/50';

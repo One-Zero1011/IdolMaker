@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Trainee, WeeklyPlan, GameLog, ScheduleType } from '../types/index';
-import { COLORS } from '../data/constants';
+import { Trainee, WeeklyPlan, GameLog, ScheduleType, FacilitiesState, FacilityType, TraineeStatus, SpecialEvent, Album, AlbumConcept } from '../types/index';
+import { COLORS, INITIAL_FUNDS, FACILITY_UPGRADE_COSTS, ANNUAL_EVENTS, ALBUM_CONCEPTS } from '../data/constants';
 import { generateId, processWeek } from '../utils/gameLogic';
 
 const SAVE_KEY = 'k_idol_producer_v1_save';
@@ -16,12 +16,24 @@ interface NotificationState {
 
 export const useGame = () => {
   const [week, setWeek] = useState(1);
+  const [funds, setFunds] = useState(INITIAL_FUNDS);
+  const [reputation, setReputation] = useState(10); 
+  const [facilities, setFacilities] = useState<FacilitiesState>({
+    vocal: 1,
+    dance: 1,
+    rap: 1,
+    gym: 1
+  });
   const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan>([
     'Vocal Training', 'Dance Practice', 'Vocal Training', 'Dance Practice', 'Gym', 'Street Performance', 'Rest'
   ]);
   const [gameLogs, setGameLogs] = useState<GameLog | null>(null);
   const [historyLogs, setHistoryLogs] = useState<string[]>([]);
+  
+  const [currentSpecialEvent, setCurrentSpecialEvent] = useState<SpecialEvent | null>(null);
+  const [pendingDecision, setPendingDecision] = useState(false);
 
   const [notification, setNotification] = useState<NotificationState>({
     isOpen: false,
@@ -37,45 +49,28 @@ export const useGame = () => {
   const closeMessage = () => setNotification(prev => ({ ...prev, isOpen: false }));
 
   const initializeStarters = () => {
-    const id1 = generateId();
-    const id2 = generateId();
-    const id3 = generateId();
-    const starters: Trainee[] = [
-      {
-        id: id1,
-        name: "하나",
-        age: 19,
-        mbti: "ENTJ",
-        position: "Leader",
-        stats: { vocal: 40, dance: 30, rap: 10, visual: 60, leadership: 70 },
-        stamina: 100, mental: 90, scandalRisk: 5, fans: 120, sentiment: 60, status: 'Active', history: [], imageColor: COLORS[0],
-        relationships: { [id2]: 50, [id3]: 50 }
-      },
-      {
-        id: id2,
-        name: "유나",
-        age: 17,
-        mbti: "ISFP",
-        position: "Dance",
-        stats: { vocal: 20, dance: 75, rap: 10, visual: 50, leadership: 10 },
-        stamina: 95, mental: 70, scandalRisk: 10, fans: 300, sentiment: 55, status: 'Active', history: [], imageColor: COLORS[3],
-        relationships: { [id1]: 50, [id3]: 60 }
-      },
-      {
-        id: id3,
-        name: "지우",
-        age: 20,
-        mbti: "INTP",
-        position: "Vocal",
-        stats: { vocal: 80, dance: 20, rap: 5, visual: 40, leadership: 20 },
-        stamina: 80, mental: 60, scandalRisk: 2, fans: 500, sentiment: 70, status: 'Active', history: [], imageColor: COLORS[6],
-        relationships: { [id1]: 50, [id2]: 60 }
-      }
-    ];
-    setTrainees(starters);
+    setTrainees([]);
     setWeek(1);
+    setFunds(INITIAL_FUNDS);
+    setReputation(10);
+    setFacilities({ vocal: 1, dance: 1, rap: 1, gym: 1 });
     setHistoryLogs([]);
+    setAlbums([]);
   };
+
+  useEffect(() => {
+    const weekInYear = ((week - 1) % 52) + 1;
+    const event = ANNUAL_EVENTS.find(e => e.week === weekInYear);
+    
+    if (event) {
+      if (reputation >= event.minReputation) {
+        setCurrentSpecialEvent(event);
+        setPendingDecision(true);
+      } else {
+        setHistoryLogs(prev => [`[시스템] 기획사 명성(Reputation) 부족으로 인해 '${event.title}' 참가가 무산되었습니다.`, ...prev]);
+      }
+    }
+  }, [week]);
 
   useEffect(() => {
     const savedData = localStorage.getItem(SAVE_KEY);
@@ -83,9 +78,13 @@ export const useGame = () => {
       try {
         const parsed = JSON.parse(savedData);
         setWeek(parsed.week || 1);
+        setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
+        setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
         setTrainees(parsed.trainees || []);
         setWeeklyPlan(parsed.weeklyPlan || []);
         setHistoryLogs(parsed.historyLogs || []);
+        setAlbums(parsed.albums || []);
       } catch (e) {
         initializeStarters();
       }
@@ -94,103 +93,198 @@ export const useGame = () => {
     }
   }, []);
 
-  // --- Browser Storage Logic ---
   const saveToBrowser = () => {
-    const dataToSave = { week, trainees, weeklyPlan, historyLogs, timestamp: new Date().toISOString() };
+    const dataToSave = { week, funds, reputation, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
     showMessage("브라우저 저장 완료", "현재 진행 상황이 브라우저 캐시에 저장되었습니다.", "success");
   };
 
   const loadFromBrowser = () => {
     const savedData = localStorage.getItem(SAVE_KEY);
-    if (!savedData) {
-      showMessage("불러오기 실패", "브라우저에 저장된 데이터가 없습니다.", "alert");
-      return;
-    }
-    try {
-      const parsed = JSON.parse(savedData);
-      setWeek(parsed.week);
-      setTrainees(parsed.trainees);
-      setWeeklyPlan(parsed.weeklyPlan);
-      setHistoryLogs(parsed.historyLogs);
-      showMessage("불러오기 성공", "브라우저 캐시에서 데이터를 성공적으로 불러왔습니다.", "success");
-    } catch (e) {
-      showMessage("오류", "데이터를 불러오는 중 문제가 발생했습니다.", "alert");
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setWeek(parsed.week || 1);
+        setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
+        setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
+        setTrainees(parsed.trainees || []);
+        setWeeklyPlan(parsed.weeklyPlan || []);
+        setHistoryLogs(parsed.historyLogs || []);
+        setAlbums(parsed.albums || []);
+        showMessage("불러오기 완료", "저장된 데이터를 성공적으로 불러왔습니다.", "success");
+      } catch (e) {
+        showMessage("불러오기 실패", "데이터 형식이 올바르지 않습니다.", "alert");
+      }
+    } else {
+      showMessage("데이터 없음", "저장된 데이터가 없습니다.", "alert");
     }
   };
 
-  // --- File Storage Logic ---
   const exportToFile = () => {
-    const dataToSave = { week, trainees, weeklyPlan, historyLogs, timestamp: new Date().toISOString() };
+    const dataToSave = { week, funds, reputation, facilities, trainees, weeklyPlan, historyLogs, albums, timestamp: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const dateStr = new Date().toISOString().split('T')[0];
     link.href = url;
-    link.download = `k-idol-save-${dateStr}.json`;
+    link.download = `k_idol_producer_save_${new Date().getTime()}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    showMessage("파일 내보내기", "게임 데이터 파일 다운로드가 시작되었습니다.", "success");
   };
 
   const importFromFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const content = e.target?.result as string;
-        const parsed = JSON.parse(content);
-        
-        // Basic Validation
-        if (!parsed.trainees || !parsed.week) throw new Error("Invalid Save File");
-
-        setWeek(parsed.week);
-        setTrainees(parsed.trainees);
-        setWeeklyPlan(parsed.weeklyPlan);
-        setHistoryLogs(parsed.historyLogs);
-        
-        // After file import, also update browser storage
-        localStorage.setItem(SAVE_KEY, content);
-        
-        showMessage("파일 불러오기 성공", "데이터를 성공적으로 복구했습니다.", "success");
+        const parsed = JSON.parse(e.target?.result as string);
+        setWeek(parsed.week || 1);
+        setFunds(parsed.funds !== undefined ? parsed.funds : INITIAL_FUNDS);
+        setReputation(parsed.reputation !== undefined ? parsed.reputation : 10);
+        setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
+        setTrainees(parsed.trainees || []);
+        setWeeklyPlan(parsed.weeklyPlan || []);
+        setHistoryLogs(parsed.historyLogs || []);
+        setAlbums(parsed.albums || []);
+        showMessage("가져오기 완료", "파일에서 데이터를 성공적으로 가져왔습니다.", "success");
       } catch (err) {
-        showMessage("파일 오류", "올바르지 않은 세이브 파일입니다.", "alert");
+        showMessage("가져오기 실패", "올바른 JSON 파일이 아닙니다.", "alert");
       }
     };
     reader.readAsText(file);
   };
 
   const resetGame = () => {
-    showMessage(
-      "게임 초기화", 
-      "정말 모든 데이터를 삭제하고 처음부터 다시 시작하시겠습니까?\n이 작업은 되돌릴 수 없습니다.", 
-      "confirm", 
-      () => {
-        localStorage.removeItem(SAVE_KEY);
-        window.location.reload();
-      }
-    );
+    showMessage("초기화 확인", "정말로 모든 진행 상황을 초기화하시겠습니까? 되돌릴 수 없습니다.", "confirm", () => {
+      initializeStarters();
+      localStorage.removeItem(SAVE_KEY);
+      showMessage("초기화 완료", "모든 데이터가 초기화되었습니다.", "success");
+    });
   };
 
-  const addNewTrainee = (newTraineeData: Omit<Trainee, 'id' | 'fans' | 'status' | 'history'>) => {
+  const produceAlbum = (title: string, concept: AlbumConcept) => {
+    const activeArtists = trainees.filter(t => t.status === 'Active');
+    if (activeArtists.length === 0) {
+      showMessage("활동 중단", "활동 가능한 아티스트가 없습니다.", "alert");
+      return null;
+    }
+
+    const cost = 200000;
+    if (funds < cost) {
+      showMessage("자금 부족", "앨범 제작비(₩200,000)가 부족합니다.", "alert");
+      return null;
+    }
+
+    const conceptConfig = ALBUM_CONCEPTS[concept];
+    let totalQuality = 0;
+    activeArtists.forEach(artist => {
+      let artistScore = 0;
+      Object.entries(conceptConfig.weights).forEach(([stat, weight]) => {
+        artistScore += (artist.stats[stat as keyof typeof artist.stats] as number) * (weight as number);
+      });
+      totalQuality += artistScore;
+    });
+    
+    const baseQuality = totalQuality / activeArtists.length;
+    const randomFactor = 0.8 + Math.random() * 0.4;
+    const finalQuality = Math.min(100, Math.floor(baseQuality * randomFactor));
+    
+    const chartRank = Math.max(1, Math.min(100, 101 - Math.floor(finalQuality * (reputation / 100) + Math.random() * 20)));
+    const isBillboard = finalQuality > 85 && reputation > 70;
+    const sales = Math.floor(finalQuality * reputation * 50 + Math.random() * 50000);
+    const revenue = sales * 10;
+
+    const newAlbum: Album = {
+      id: generateId(),
+      title,
+      concept,
+      releaseWeek: week,
+      quality: finalQuality,
+      sales,
+      peakChart: chartRank,
+      isBillboard
+    };
+
+    setFunds(prev => prev - cost + revenue);
+    setReputation(prev => Math.min(100, prev + (finalQuality / 20)));
+    setAlbums(prev => [newAlbum, ...prev]);
+    
+    setTrainees(prev => prev.map(t => t.status === 'Active' ? { 
+      ...t, 
+      fans: t.fans + Math.floor(sales / 10),
+      stamina: Math.max(0, t.stamina - 30),
+      mental: Math.max(0, t.mental - 20)
+    } : t));
+
+    const logText = `💿 [컴백] 신보 '${title}'(${conceptConfig.label}) 발매! 차트 최고 ${chartRank}위 달성!`;
+    setHistoryLogs(prev => [logText, ...prev]);
+
+    return { album: newAlbum, revenue };
+  };
+
+  const addNewTrainee = (newTraineeData: Omit<Trainee, 'id' | 'fans' | 'status' | 'history' | 'contractRemaining'>, castingCost: number) => {
+    if (funds < castingCost) {
+      showMessage("자금 부족", "캐스팅 비용이 부족합니다.", "alert");
+      return;
+    }
+
     const newId = generateId();
-    const initialRelations: Record<string, number> = {};
-    trainees.forEach(t => { initialRelations[t.id] = 50; });
-    const newTrainee: Trainee = { ...newTraineeData, id: newId, fans: 0, status: 'Active', history: [], relationships: initialRelations };
-    setTrainees(prev => prev.map(t => ({ ...t, relationships: { ...t.relationships, [newId]: 50 } })).concat(newTrainee));
+    const newTrainee: Trainee = { 
+      ...newTraineeData, 
+      id: newId, 
+      fans: 0, 
+      status: 'Active', 
+      history: [], 
+      relationships: {},
+      contractRemaining: 48 
+    };
+
+    setFunds(prev => prev - castingCost);
+    setTrainees(prev => prev.concat(newTrainee));
+    
+    if (castingCost > 0) {
+      setHistoryLogs(prev => [`[시스템] ₩${castingCost.toLocaleString()}을 투자하여 새로운 아티스트 '${newTrainee.name}'를 영입했습니다.`, ...prev]);
+    }
   };
 
   const updateTrainee = (id: string, updatedData: Partial<Trainee>) => {
     setTrainees(prev => prev.map(t => t.id === id ? { ...t, ...updatedData } : t));
-    showMessage("수정 완료", "연습생 정보가 성공적으로 업데이트되었습니다.", "success");
   };
 
   const removeTrainee = (id: string) => {
-    const trainee = trainees.find(t => t.id === id);
-    if (!trainee) return;
-    showMessage("연습생 삭제", `정말 ${trainee.name} 연습생을 삭제하시겠습니까?`, "confirm", () => {
-      setTrainees(prev => prev.filter(t => t.id !== id));
-      showMessage("삭제 완료", "연습생이 명단에서 삭제되었습니다.", "alert");
-    });
+    setTrainees(prev => prev.filter(t => t.id !== id));
+  };
+
+  const renewContract = (id: string, cost: number) => {
+    if (funds < cost) {
+      showMessage("자금 부족", "재계약금을 지불할 자산이 부족합니다.", "alert");
+      return;
+    }
+    setFunds(prev => prev - cost);
+    setTrainees(prev => prev.map(t => t.id === id ? { ...t, contractRemaining: t.contractRemaining + 48, status: 'Active' } : t));
+    showMessage("재계약 체결", "아티스트와 성공적으로 파트너십을 연장했습니다.", "success");
+  };
+
+  const releaseTrainee = (id: string) => {
+    setTrainees(prev => prev.map(t => t.id === id ? { ...t, status: 'Contract Terminated', contractRemaining: 0 } : t));
+    showMessage("계약 종료", "아티스트와의 전속 계약이 종료되었습니다.", "alert");
+  };
+
+  const upgradeFacility = (type: FacilityType) => {
+    const currentLevel = facilities[type];
+    if (currentLevel >= 10) {
+      showMessage("최고 레벨", "이미 최대 레벨(10)에 도달했습니다.", "alert");
+      return;
+    }
+    const cost = FACILITY_UPGRADE_COSTS[currentLevel + 1];
+    if (funds < cost) {
+      showMessage("자금 부족", "시설 업그레이드 비용이 부족합니다.", "alert");
+      return;
+    }
+
+    setFunds(prev => prev - cost);
+    setFacilities(prev => ({ ...prev, [type]: currentLevel + 1 }));
+    setReputation(prev => Math.min(100, prev + 1)); 
+    showMessage("업그레이드 완료", `${type.toUpperCase()} 시설 투자로 기획사 이미지가 개선되었습니다! (+평판)`, "success");
   };
 
   const updateDailyPlan = (dayIndex: number, type: ScheduleType) => {
@@ -201,23 +295,86 @@ export const useGame = () => {
     });
   };
 
+  const handleEventDecision = (participate: boolean) => {
+    if (!currentSpecialEvent) return;
+
+    if (participate) {
+      const event = currentSpecialEvent;
+      if (event.costs.funds) setFunds(prev => prev - (event.costs.funds || 0));
+      
+      setTrainees(prev => prev.map(t => {
+         if (t.status !== 'Active') return t;
+         return {
+            ...t,
+            stamina: Math.max(0, t.stamina - (event.costs.stamina || 0)),
+            mental: Math.max(0, t.mental - (event.costs.mental || 0)),
+            fans: t.fans + (event.rewards.fans || 0),
+         };
+      }));
+
+      if (event.rewards.reputation) setReputation(prev => Math.min(100, prev + (event.rewards.reputation || 0)));
+      if (event.rewards.funds) setFunds(prev => prev + (event.rewards.funds || 0));
+
+      const logText = `✨ [이벤트 참가] ${event.title}에 참가하여 커다란 성과를 거두었습니다!`;
+      setHistoryLogs(prev => [logText, ...prev]);
+      showMessage("이벤트 완료", `${event.title} 참가를 통해 팬덤과 명성을 얻었습니다!`, "success");
+    } else {
+      const logText = `💤 [이벤트 패스] ${currentSpecialEvent.title} 참가를 포기하고 휴식을 선택했습니다.`;
+      setHistoryLogs(prev => [logText, ...prev]);
+      setReputation(prev => Math.max(0, prev - 1)); 
+    }
+
+    setPendingDecision(false);
+    setCurrentSpecialEvent(null);
+  };
+
   const nextWeek = () => {
-    const { updatedTrainees, dailyLogs, flatLogs } = processWeek(trainees, weeklyPlan);
+    if (pendingDecision) {
+      showMessage("이벤트 결정 필요", "이번 주의 특별 이벤트 참가 여부를 먼저 결정해야 합니다.", "alert");
+      return;
+    }
+
+    const { updatedTrainees, dailyLogs, flatLogs, fundChange, reputationChange } = processWeek(trainees, weeklyPlan, facilities, reputation);
+    
+    const finalizedTrainees: Trainee[] = updatedTrainees.map((t: Trainee) => {
+      if (t.status === 'Active' || t.status === 'Hospitalized') {
+        const nextContract = Math.max(0, t.contractRemaining - 1);
+        const nextStatus: TraineeStatus = nextContract === 0 ? 'Contract Terminated' : t.status;
+        return { ...t, contractRemaining: nextContract, status: nextStatus };
+      }
+      return t;
+    });
+
     const nextWeekNum = week + 1;
+    const newFunds = funds + fundChange;
+    const newReputation = Math.min(100, Math.max(0, reputation + reputationChange));
     const newHistory = [...flatLogs.reverse(), ...historyLogs];
-    setTrainees(updatedTrainees);
+    
+    setTrainees(finalizedTrainees);
+    setFunds(newFunds);
+    setReputation(newReputation);
     setGameLogs({ week, dailyLogs, type: 'info' });
     setHistoryLogs(newHistory);
     setWeek(nextWeekNum);
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ week: nextWeekNum, trainees: updatedTrainees, weeklyPlan, historyLogs: newHistory, timestamp: new Date().toISOString() }));
+
+    const expiringSoon = finalizedTrainees.filter((t: Trainee) => t.contractRemaining <= 12 && t.contractRemaining > 0 && t.status === 'Active');
+    if (expiringSoon.length > 0) {
+      const names = expiringSoon.map((t: Trainee) => t.name).join(', ');
+      showMessage("계약 만료 임박", `${names} 아티스트의 계약 만료가 3개월(12주) 앞으로 다가왔습니다. 재계약을 검토하세요.`, "alert");
+    }
+
+    if (newFunds < 0) {
+      showMessage("경영 위기", "회사의 자금이 바닥났습니다! 수익 활동에 집중하세요.", "alert");
+    }
   };
 
   const closeLogs = () => setGameLogs(null);
   const activeTrainees = trainees.filter(t => t.status === 'Active');
 
   return {
-    week, trainees, activeTrainees, weeklyPlan, gameLogs, historyLogs, notification,
-    addNewTrainee, updateTrainee, removeTrainee, updateDailyPlan, nextWeek, closeLogs, 
-    saveToBrowser, loadFromBrowser, exportToFile, importFromFile, resetGame, closeMessage
+    week, funds, reputation, facilities, trainees, activeTrainees, weeklyPlan, gameLogs, historyLogs, notification, albums,
+    currentSpecialEvent, pendingDecision,
+    addNewTrainee, updateTrainee, removeTrainee, renewContract, releaseTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, 
+    saveToBrowser, loadFromBrowser, exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum
   };
 };

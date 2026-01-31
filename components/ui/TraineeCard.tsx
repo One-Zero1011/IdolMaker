@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Trainee } from '../../types/index';
 import { TRANSLATIONS } from '../../data/constants';
-import { Heart, Activity, ShieldAlert, AlertTriangle, MessageCircleHeart, ChevronDown, ChevronUp, Users, Edit2, Trash2 } from 'lucide-react';
+import { Heart, Activity, ShieldAlert, AlertTriangle, MessageCircleHeart, ChevronDown, ChevronUp, Users, Edit2, Trash2, FileText, Timer } from 'lucide-react';
 
 interface Props {
   trainee: Trainee;
@@ -10,6 +10,7 @@ interface Props {
   onClick?: () => void;
   onEdit?: (trainee: Trainee) => void;
   onDelete?: (id: string) => void;
+  onRenew?: (trainee: Trainee) => void; 
   selected?: boolean;
 }
 
@@ -26,11 +27,11 @@ const StatBar = ({ label, value, color, max = 100 }: { label: string; value: num
   </div>
 );
 
-const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, onDelete, selected }) => {
+const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, onDelete, onRenew, selected }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const isEliminated = trainee.status === 'Eliminated';
+  const isTerminated = trainee.status === 'Contract Terminated';
   
-  // Calculate sentiment color
   let sentimentColor = 'bg-zinc-500';
   let sentimentIconColor = 'text-zinc-500';
   
@@ -43,6 +44,15 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
   } else {
       sentimentColor = 'bg-zinc-400';
       sentimentIconColor = 'text-zinc-400';
+  }
+
+  const contractWeeks = trainee.contractRemaining;
+  let contractBadgeColor = 'bg-zinc-800 text-zinc-400';
+
+  if (contractWeeks <= 4) {
+    contractBadgeColor = 'bg-red-600 text-white animate-pulse';
+  } else if (contractWeeks <= 12) {
+    contractBadgeColor = 'bg-orange-600 text-white';
   }
 
   const getRelationLabel = (score: number) => {
@@ -70,14 +80,13 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
 
   return (
     <div 
-      onClick={!isEliminated ? onClick : undefined}
+      onClick={(!isEliminated && !isTerminated) ? onClick : undefined}
       className={`
         relative overflow-hidden rounded-xl border transition-all duration-200 cursor-pointer group flex flex-col
         ${selected ? 'border-pink-500 bg-zinc-900 shadow-[0_0_15px_rgba(236,72,153,0.3)]' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600'}
-        ${isEliminated ? 'opacity-50 grayscale cursor-not-allowed' : ''}
+        ${(isEliminated || isTerminated) ? 'opacity-50 grayscale cursor-not-allowed' : ''}
       `}
     >
-      {/* Header / Avatar Area */}
       <div className="flex items-center p-3 gap-3 border-b border-zinc-800 bg-zinc-950/20">
         <div 
           className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-inner"
@@ -87,10 +96,20 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center">
-            <h3 className="font-bold text-white truncate">{trainee.name}</h3>
+            <h3 className="font-bold text-white truncate flex items-center gap-1.5">
+               {trainee.name}
+               <span className="text-[10px] text-zinc-600">{trainee.gender === 'Female' ? '♀' : '♂'}</span>
+            </h3>
             <div className="flex items-center gap-1">
-              {!isEliminated && (
+              {(!isEliminated && !isTerminated) && (
                 <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onRenew?.(trainee); }}
+                     className="p-1.5 text-zinc-500 hover:text-emerald-400 transition-colors"
+                     title="재계약"
+                   >
+                     <FileText size={14} />
+                   </button>
                    <button 
                      onClick={(e) => { e.stopPropagation(); onEdit?.(trainee); }}
                      className="p-1.5 text-zinc-500 hover:text-blue-400 transition-colors"
@@ -113,14 +132,15 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-            <span>{trainee.mbti}</span>
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black ${contractBadgeColor}`}>
+               <Timer size={10} /> D-{contractWeeks}
+            </div>
             <span>•</span>
             <span className="flex items-center gap-1 text-pink-400"><Heart size={10} fill="currentColor" /> {trainee.fans.toLocaleString()}</span>
           </div>
         </div>
       </div>
 
-      {/* Status Bars (HP/Mental/Sentiment) */}
       <div className="p-3 bg-zinc-950/30 space-y-1.5">
         <div className="flex items-center gap-2">
           <Activity size={12} className="text-red-500" />
@@ -143,7 +163,6 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="p-3 grid grid-cols-2 gap-x-4">
         <div className="col-span-2 mb-1">
            <StatBar label="보컬" value={trainee.stats.vocal} color="bg-purple-500" />
@@ -154,8 +173,7 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
         </div>
       </div>
 
-      {/* Relationships Toggle Footer */}
-      {!isEliminated && relations.length > 0 && (
+      {(!isEliminated && !isTerminated) && relations.length > 0 && (
         <div className="border-t border-zinc-800 bg-black/20">
             <button 
                 onClick={toggleExpand}
@@ -202,6 +220,15 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
           <div className="text-center">
             <AlertTriangle className="mx-auto text-red-500 mb-2" size={32} />
             <span className="font-bold text-red-500 uppercase tracking-widest">퇴출됨</span>
+          </div>
+        </div>
+      )}
+
+      {isTerminated && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10 backdrop-blur-sm">
+          <div className="text-center">
+            <Timer className="mx-auto text-zinc-500 mb-2" size={32} />
+            <span className="font-bold text-zinc-300 uppercase tracking-widest">계약 만료</span>
           </div>
         </div>
       )}

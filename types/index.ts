@@ -1,13 +1,15 @@
 
-export type Position = 'Vocal' | 'Dance' | 'Rap' | 'Visual' | 'Leader';
+export type Position = 'Main Vocal' | 'Main Dancer' | 'Main Rapper' | 'Visual' | 'Leader';
+
+export type Gender = 'Male' | 'Female';
 
 export type MBTI = 
-  | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' // Analysts
-  | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' // Diplomats
-  | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ' // Sentinels
-  | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP'; // Explorers
+  | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' 
+  | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' 
+  | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ' 
+  | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
 
-export type TraineeStatus = 'Active' | 'Eliminated' | 'Debuted' | 'Hospitalized';
+export type TraineeStatus = 'Active' | 'On Hiatus' | 'Legendary' | 'Contract Terminated' | 'Eliminated' | 'Hospitalized';
 
 export interface Stats {
   vocal: number;
@@ -20,19 +22,34 @@ export interface Stats {
 export interface Trainee {
   id: string;
   name: string;
+  gender: Gender;
   age: number;
   mbti: MBTI;
   position: Position;
   stats: Stats;
-  stamina: number; // 0-100
-  mental: number; // 0-100
-  scandalRisk: number; // 0-100, hidden factor
+  stamina: number; 
+  mental: number; 
+  scandalRisk: number; 
   fans: number;
-  sentiment: number; // 0-100, fan sentiment
-  relationships: Record<string, number>; // Key: TraineeID, Value: 0-100 (Affinity)
+  sentiment: number; 
+  relationships: Record<string, number>; 
   status: TraineeStatus;
-  history: string[]; // Log of major events
-  imageColor: string; // To differentiate avatars without external images
+  history: string[]; 
+  imageColor: string; 
+  contractRemaining: number; 
+}
+
+export type AlbumConcept = 'Refreshing' | 'Dark' | 'High-teen' | 'Girl Crush' | 'Retro';
+
+export interface Album {
+  id: string;
+  title: string;
+  concept: AlbumConcept;
+  releaseWeek: number;
+  quality: number; // 0-100
+  sales: number;
+  peakChart: number; // 1-100
+  isBillboard: boolean;
 }
 
 export type ScheduleType = 
@@ -45,11 +62,10 @@ export type ScheduleType =
   | 'Live Stream' 
   | 'Rest';
 
-// 7 items, index 0 = Mon, 6 = Sun
-export type WeeklyPlan = ScheduleType[]; 
+export type WeeklyPlan = ScheduleType[];
 
 export interface DailyLog {
-  dayIndex: number; // 0-6, 7 for weekly
+  dayIndex: number; 
   dayLabel: string;
   logs: string[];
 }
@@ -58,4 +74,33 @@ export interface GameLog {
   week: number;
   dailyLogs: DailyLog[];
   type: 'info' | 'success' | 'warning' | 'danger';
+}
+
+export type FacilityType = 'vocal' | 'dance' | 'rap' | 'gym';
+
+export interface FacilitiesState {
+  vocal: number;
+  dance: number;
+  rap: number;
+  gym: number;
+}
+
+export interface SpecialEvent {
+  id: string;
+  week: number; 
+  title: string;
+  description: string;
+  minReputation: number; 
+  rewards: {
+    fans?: number;
+    reputation?: number;
+    funds?: number;
+  };
+  costs: {
+    stamina?: number;
+    mental?: number;
+    funds?: number;
+  };
+  icon: string;
+  bannerColor: string;
 }
