@@ -1,10 +1,16 @@
 
-import { ScheduleType, FacilityType, SpecialEvent, AlbumConcept } from '../types/index';
+import { ScheduleType, FacilityType, SpecialEvent, AlbumConcept, HQLevel, StaffRole } from '../types/index';
 
 export const INITIAL_FUNDS = 500000; 
 export const BASE_ALBUM_PRICE = 20000; 
 
 export const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+
+export const COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+  '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef',
+  '#f43f5e', '#64748b'
+];
 
 export const NPC_GROUPS = [
   { name: 'NEO JEANS', song: 'Super Shy', basePower: 8500 },
@@ -319,7 +325,20 @@ export const FAN_REACTIONS = {
   ]
 };
 
-export const COLORS = [
-  '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#10b981', 
-  '#f43f5e', '#06b6d4', '#d946ef', '#6366f1', '#f97316'
+// --- HQ & Staff Constants ---
+
+export const HQ_LEVELS: HQLevel[] = [
+  { level: 1, name: '지하 연습실', description: '습하고 좁지만 꿈을 키우는 시작점', cost: 0, maxStaff: 0, maintenance: 5000, imgColor: 'from-zinc-800 to-zinc-900' },
+  { level: 2, name: '소형 오피스', description: '지상을 밟았습니다. 기본적인 업무가 가능합니다.', cost: 500000, maxStaff: 2, maintenance: 20000, imgColor: 'from-blue-900 to-zinc-900' },
+  { level: 3, name: '강남 사옥 (임대)', description: '본격적인 엔터테인먼트 활동을 위한 거점', cost: 2000000, maxStaff: 4, maintenance: 100000, imgColor: 'from-indigo-900 to-slate-900' },
+  { level: 4, name: '자사 신축 사옥', description: '성공의 상징. 모든 시설이 완비되어 있습니다.', cost: 10000000, maxStaff: 8, maintenance: 500000, imgColor: 'from-purple-900 to-zinc-900' },
+  { level: 5, name: '글로벌 미디어 타워', description: '세계적인 랜드마크. K-POP의 중심지.', cost: 50000000, maxStaff: 20, maintenance: 2000000, imgColor: 'from-yellow-900 to-zinc-900' }
+];
+
+export const STAFF_ROLES: { id: StaffRole; name: string; salary: number; hireCost: number; description: string; effectDesc: string }[] = [
+  { id: 'manager', name: '매니저', salary: 10000, hireCost: 100000, description: '아티스트의 스케줄과 컨디션을 관리합니다.', effectDesc: '체력/멘탈 소모 감소' },
+  { id: 'vocal_trainer', name: '보컬 트레이너', salary: 15000, hireCost: 150000, description: '전문적인 발성 교육을 담당합니다.', effectDesc: '보컬 훈련 효율 증가' },
+  { id: 'dance_trainer', name: '댄스 트레이너', salary: 15000, hireCost: 150000, description: '칼군무를 위한 스파르타 교육.', effectDesc: '댄스/체력 훈련 효율 증가' },
+  { id: 'marketer', name: '마케팅 팀장', salary: 20000, hireCost: 200000, description: '바이럴 마케팅과 언론 홍보를 주도합니다.', effectDesc: '팬 유입/자금 획득 증가' },
+  { id: 'stylist', name: '비주얼 디렉터', salary: 25000, hireCost: 250000, description: '아티스트의 스타일링을 책임집니다.', effectDesc: '비주얼/매력 상승' }
 ];

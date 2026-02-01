@@ -84,7 +84,8 @@ const TraineeFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, funds, ini
       scandalRisk: initialData ? initialData.scandalRisk : Math.floor(Math.random() * 20),
       imageColor: initialData ? initialData.imageColor : COLORS[Math.floor(Math.random() * COLORS.length)],
       sentiment: initialData ? initialData.sentiment : 60,
-      relationships: initialData ? initialData.relationships : {}
+      relationships: initialData ? initialData.relationships : {},
+      specialRelations: initialData?.specialRelations || {}
     }, initialData ? 0 : currentCasting.cost);
     
     onClose();
@@ -288,7 +289,6 @@ const TraineeFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, funds, ini
                            </div>
                            <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
                               <div 
-                                // Fix: Explicitly cast 'val' as number to avoid TypeScript 'unknown' comparison error
                                 className={`h-full transition-all duration-1000 ${(val as number) > 80 ? 'bg-yellow-500' : (val as number) > 50 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
                                 style={{ width: `${val}%` }} 
                               />

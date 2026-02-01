@@ -23,14 +23,16 @@ import AlbumReleaseSimulationModal from './components/album/AlbumReleaseSimulati
 import GlobalRankingChart from './components/ranking/GlobalRankingChart';
 import GroupCreationModal from './components/group/GroupCreationModal';
 import GroupSelector from './components/group/GroupSelector';
+import CompanyDashboard from './components/company/CompanyDashboard';
 
 const App: React.FC = () => {
   const {
     week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, activeGroupMembers, 
     weeklyPlan, gameLogs, historyLogs, notification, currentSpecialEvent, pendingDecision, albums, ranking, isChartOpen, 
-    groups, activeGroupId, activeGroup,
-    addNewTrainee, removeTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, setIsChartOpen, setActiveGroupId,
-    exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue, formGroup
+    groups, activeGroupId, activeGroup, hqLevel, staff,
+    addNewTrainee, removeTrainee, updateTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, setIsChartOpen, setActiveGroupId,
+    exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue, formGroup,
+    upgradeHQ, hireStaff, fireStaff, renewContract
   } = useGame();
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -41,7 +43,12 @@ const App: React.FC = () => {
   const [isAlbumModalOpen, setIsAlbumModalOpen] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isSimulationOpen, setIsSimulationOpen] = useState(false);
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [currentResult, setCurrentResult] = useState<{ album: Album; revenue: number } | null>(null);
+  
+  // Contract Renewal State
+  const [renewingTrainee, setRenewingTrainee] = useState<Trainee | null>(null);
+  const [isRenewalModalOpen, setIsRenewalModalOpen] = useState(false);
 
   const canProduceAlbum = week - lastAlbumWeek >= 13;
   const weeksUntilNextAlbum = 13 - (week - lastAlbumWeek);
@@ -62,6 +69,35 @@ const App: React.FC = () => {
     }
   };
 
+  const handleTraineeSave = (data: any, cost: number) => {
+    if (editingTrainee) {
+      updateTrainee(editingTrainee.id, data);
+    } else {
+      addNewTrainee(data, cost);
+    }
+    setIsFormModalOpen(false);
+    setEditingTrainee(undefined);
+  };
+
+  const handleRenewConfirm = (id: string, cost: number) => {
+    const success = renewContract(id, cost);
+    if (success) {
+      setIsRenewalModalOpen(false);
+      setRenewingTrainee(null);
+      // Success message is handled via logic or UI update, but we can add explicit notification if needed
+    } else {
+      // Logic inside renewContract returns false if funds insufficient, handled by UI there or here
+      // But standard way:
+      // useGame notification state is shared.
+    }
+  };
+
+  const handleReleaseConfirm = (id: string) => {
+    removeTrainee(id);
+    setIsRenewalModalOpen(false);
+    setRenewingTrainee(null);
+  };
+
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-yellow-500/30">
       
@@ -73,6 +109,7 @@ const App: React.FC = () => {
         onFileExport={exportToFile}
         onFileImport={importFromFile}
         onReset={resetGame}
+        onOpenCompany={() => setIsCompanyModalOpen(true)}
       />
 
       <main className="p-6 lg:p-8 max-w-[1920px] mx-auto animate-in fade-in duration-500">
@@ -130,6 +167,7 @@ const App: React.FC = () => {
                   weeklyPlan={weeklyPlan}
                   onScheduleChange={updateDailyPlan}
                   onRunWeek={nextWeek}
+                  onOpenRanking={() => setIsChartOpen(true)}
                 />
               </>
             ) : (
@@ -161,7 +199,7 @@ const App: React.FC = () => {
               onSelect={setSelectedTraineeId}
               onEdit={(t) => { setEditingTrainee(t); setIsFormModalOpen(true); }}
               onDelete={removeTrainee}
-              onRenew={() => {}} 
+              onRenew={(t) => { setRenewingTrainee(t); setIsRenewalModalOpen(true); }} 
               onOpenCreateModal={() => { setEditingTrainee(undefined); setIsFormModalOpen(true); }}
               onOpenGroupModal={() => setIsGroupModalOpen(true)}
             />
@@ -181,15 +219,17 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      <TraineeFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} onSave={addNewTrainee} funds={funds} initialData={editingTrainee} />
+      <TraineeFormModal isOpen={isFormModalOpen} onClose={() => { setIsFormModalOpen(false); setEditingTrainee(undefined); }} onSave={handleTraineeSave} funds={funds} initialData={editingTrainee} />
       <WeeklyResultModal results={gameLogs} onClose={closeLogs} />
       <GlobalRankingChart isOpen={isChartOpen} onClose={() => setIsChartOpen(false)} ranking={ranking} week={week - 1} />
       <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} logs={historyLogs} />
-      <FanFeedMobile isOpen={isFanFeedOpen} onClose={() => setIsFanFeedOpen(false)} trainees={activeTrainees} historyLogs={historyLogs} />
+      <FanFeedMobile isOpen={isFanFeedOpen} onClose={() => setIsFanFeedOpen(false)} trainees={activeTrainees} historyLogs={historyLogs} albums={albums} />
       <SpecialEventModal isOpen={pendingDecision} event={currentSpecialEvent} funds={funds} onDecision={handleEventDecision} />
       <AlbumProductionModal isOpen={isAlbumModalOpen} onClose={() => setIsAlbumModalOpen(false)} activeTrainees={activeGroupMembers} funds={funds} onProduce={handleAlbumProduction} />
       <AlbumReleaseSimulationModal isOpen={isSimulationOpen} album={currentResult?.album || null} totalRevenue={currentResult?.revenue || 0} onClose={() => setIsSimulationOpen(false)} onSettle={handleFinalSettlement} />
-      <GroupCreationModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} trainees={trainees} onForm={formGroup} />
+      <GroupCreationModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} trainees={trainees} existingGroups={groups} onForm={formGroup} />
+      <CompanyDashboard isOpen={isCompanyModalOpen} onClose={() => setIsCompanyModalOpen(false)} hqLevel={hqLevel} staff={staff} funds={funds} onUpgradeHQ={upgradeHQ} onHireStaff={hireStaff} onFireStaff={fireStaff} />
+      <ContractRenewalModal isOpen={isRenewalModalOpen} onClose={() => setIsRenewalModalOpen(false)} trainee={renewingTrainee} funds={funds} onRenew={handleRenewConfirm} onRelease={handleReleaseConfirm} />
       <MessageModal isOpen={notification.isOpen} title={notification.title} message={notification.message} type={notification.type} onConfirm={notification.onConfirm || (() => {})} onClose={closeMessage} />
     </div>
   );

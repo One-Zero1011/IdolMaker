@@ -21,6 +21,8 @@ export interface Stats {
   leadership: number;
 }
 
+export type RelationType = 'SecretLover' | 'PublicLover';
+
 export interface Trainee {
   id: string;
   name: string;
@@ -35,6 +37,7 @@ export interface Trainee {
   fans: number;
   sentiment: number; 
   relationships: Record<string, number>; 
+  specialRelations: Record<string, RelationType>; // Added field for Lover status
   status: TraineeStatus;
   history: string[]; 
   imageColor: string; 
@@ -124,4 +127,26 @@ export interface SpecialEvent {
   };
   icon: string;
   bannerColor: string;
+}
+
+// --- New Types for HQ & Staff ---
+
+export type StaffRole = 'manager' | 'vocal_trainer' | 'dance_trainer' | 'marketer' | 'stylist';
+
+export interface StaffState {
+  manager: number; // Count/Level of hired managers
+  vocal_trainer: number;
+  dance_trainer: number;
+  marketer: number;
+  stylist: number;
+}
+
+export interface HQLevel {
+  level: number;
+  name: string;
+  description: string;
+  cost: number;
+  maxStaff: number;
+  maintenance: number; // Weekly cost
+  imgColor: string;
 }

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CalendarDays, Play, Battery, BatteryCharging, X, Check, TrendingUp, Wallet, Calendar } from 'lucide-react';
+import { CalendarDays, Play, Battery, BatteryCharging, X, Check, TrendingUp, Wallet, Calendar, Trophy } from 'lucide-react';
 import { Trainee, WeeklyPlan, ScheduleType } from '../../types/index';
 import { TRANSLATIONS, DAYS, SCHEDULE_EFFECTS } from '../../data/constants';
 import AnnualCalendar from '../calendar/AnnualCalendar';
@@ -12,6 +12,7 @@ interface Props {
   weeklyPlan: WeeklyPlan;
   onScheduleChange: (dayIndex: number, type: ScheduleType) => void;
   onRunWeek: () => void;
+  onOpenRanking: () => void;
 }
 
 const STAT_NAMES: Record<string, string> = {
@@ -22,7 +23,7 @@ const STAT_NAMES: Record<string, string> = {
   leadership: '리더십'
 };
 
-const SchedulerPanel: React.FC<Props> = ({ week, reputation, activeTrainees, weeklyPlan, onScheduleChange, onRunWeek }) => {
+const SchedulerPanel: React.FC<Props> = ({ week, reputation, activeTrainees, weeklyPlan, onScheduleChange, onRunWeek, onOpenRanking }) => {
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
@@ -65,6 +66,14 @@ const SchedulerPanel: React.FC<Props> = ({ week, reputation, activeTrainees, wee
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={onOpenRanking}
+            className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-bold flex items-center gap-2 border border-zinc-700 transition-all hover:scale-105 active:scale-95"
+            title="랭킹 차트 보기"
+          >
+            <Trophy size={18} className="text-pink-500" />
+            <span className="hidden sm:inline">랭킹 차트</span>
+          </button>
           <button 
             onClick={() => setIsCalendarOpen(true)}
             className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-bold flex items-center gap-2 border border-zinc-700 transition-all hover:scale-105 active:scale-95"

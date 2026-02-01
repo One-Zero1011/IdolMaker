@@ -1,16 +1,17 @@
 
 import React, { useState, useMemo } from 'react';
-import { X, Check, Users, Sparkles, Star, TrendingUp, ShieldCheck, Music2 } from 'lucide-react';
-import { Trainee, GroupType } from '../../types/index';
+import { X, Check, Users, Sparkles, Star, TrendingUp, ShieldCheck, Music2, Lock } from 'lucide-react';
+import { Trainee, GroupType, Group } from '../../types/index';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   trainees: Trainee[];
+  existingGroups: Group[];
   onForm: (name: string, memberIds: string[], type: GroupType) => void;
 }
 
-const GroupCreationModal: React.FC<Props> = ({ isOpen, onClose, trainees, onForm }) => {
+const GroupCreationModal: React.FC<Props> = ({ isOpen, onClose, trainees, existingGroups, onForm }) => {
   const [groupName, setGroupName] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -33,6 +34,17 @@ const GroupCreationModal: React.FC<Props> = ({ isOpen, onClose, trainees, onForm
 
     return { type, maleCount, femaleCount, avgVocal, avgDance, avgVisual };
   }, [selectedIds, activeTrainees]);
+
+  // Map trainee ID to group name if they belong to one
+  const traineeGroupMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    existingGroups.forEach(g => {
+        g.memberIds.forEach(id => {
+            map[id] = g.name;
+        });
+    });
+    return map;
+  }, [existingGroups]);
 
   if (!isOpen) return null;
 
@@ -94,27 +106,44 @@ const GroupCreationModal: React.FC<Props> = ({ isOpen, onClose, trainees, onForm
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                    {activeTrainees.map(trainee => {
                      const isSelected = selectedIds.includes(trainee.id);
+                     const existingGroupName = traineeGroupMap[trainee.id];
+                     const isOccupied = !!existingGroupName;
+
                      return (
                        <button
                          key={trainee.id}
                          type="button"
-                         onClick={() => toggleSelect(trainee.id)}
+                         disabled={isOccupied}
+                         onClick={() => !isOccupied && toggleSelect(trainee.id)}
                          className={`
                            relative p-4 rounded-2xl border-2 text-left transition-all flex flex-col items-center gap-3
-                           ${isSelected 
-                             ? 'bg-indigo-600/20 border-indigo-500 scale-[1.02]' 
-                             : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'}
+                           ${isOccupied 
+                             ? 'bg-zinc-900 border-zinc-800 opacity-60 cursor-not-allowed' 
+                             : isSelected 
+                               ? 'bg-indigo-600/20 border-indigo-500 scale-[1.02]' 
+                               : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'}
                          `}
                        >
                           <div 
-                            className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white text-xl"
-                            style={{backgroundColor: trainee.imageColor}}
+                            className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white text-xl relative"
+                            style={{backgroundColor: isOccupied ? '#52525b' : trainee.imageColor}}
                           >
                             {trainee.name[0]}
+                            {isOccupied && (
+                                <div className="absolute -bottom-1 -right-1 bg-zinc-900 rounded-full p-1 border border-zinc-700">
+                                    <Lock size={10} className="text-zinc-500" />
+                                </div>
+                            )}
                           </div>
                           <div className="text-center">
-                             <div className="text-sm font-bold text-white">{trainee.name}</div>
-                             <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">{trainee.gender === 'Female' ? 'Female' : 'Male'}</div>
+                             <div className={`text-sm font-bold ${isOccupied ? 'text-zinc-500' : 'text-white'}`}>{trainee.name}</div>
+                             <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tighter">
+                                {isOccupied ? (
+                                    <span className="text-indigo-400 truncate max-w-[80px] block">{existingGroupName}</span>
+                                ) : (
+                                    trainee.gender === 'Female' ? 'Female' : 'Male'
+                                )}
+                             </div>
                           </div>
                           {isSelected && <div className="absolute top-2 right-2 p-1 bg-indigo-500 rounded-full"><Check size={10} className="text-white" /></div>}
                        </button>

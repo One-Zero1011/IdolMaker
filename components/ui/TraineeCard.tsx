@@ -55,8 +55,14 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
     contractBadgeColor = 'bg-orange-600 text-white';
   }
 
-  const getRelationLabel = (score: number) => {
-      if (score >= 90) return { text: '연인', color: 'text-pink-500' };
+  const getRelationLabel = (targetId: string, score: number) => {
+      // 1. Check Special Relations first (Events)
+      const special = trainee.specialRelations?.[targetId];
+      if (special === 'SecretLover') return { text: '🤫 비밀 연인', color: 'text-purple-400' };
+      if (special === 'PublicLover') return { text: '📸 공개 연인', color: 'text-red-500 animate-pulse' };
+
+      // 2. Check Score Thresholds
+      if (score >= 90) return { text: '💍 소울메이트', color: 'text-pink-500' };
       if (score >= 80) return { text: '절친', color: 'text-pink-400' };
       if (score >= 60) return { text: '우호', color: 'text-emerald-400' };
       if (score <= 10) return { text: '견원지간', color: 'text-red-600' };
@@ -68,7 +74,7 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
   const relations = Object.entries((trainee.relationships || {}) as Record<string, number>)
     .map(([id, score]) => {
       const target = allTrainees.find(t => t.id === id);
-      return { target, score };
+      return { target, score, id };
     })
     .filter(item => item.target && item.target.status === 'Active')
     .sort((a, b) => b.score - a.score);
@@ -188,8 +194,8 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
 
             {isExpanded && (
                 <div className="px-3 pb-3 space-y-1.5 animate-in slide-in-from-top-2 fade-in duration-200">
-                    {relations.map(({ target, score }) => {
-                        const { text, color } = getRelationLabel(score);
+                    {relations.map(({ target, score, id }) => {
+                        const { text, color } = getRelationLabel(id, score);
                         return (
                             <div key={target!.id} className="flex justify-between items-center text-[10px] p-1.5 rounded hover:bg-white/5 border border-transparent hover:border-zinc-800">
                                 <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CalendarDays, Activity, TrendingUp, History, Users, Heart, HeartCrack, Minus } from 'lucide-react';
+import { CalendarDays, Activity, TrendingUp, History, Users, Heart, HeartCrack, Minus, Camera } from 'lucide-react';
 import { Trainee } from '../../types/index';
 import StatRadar from '../common/StatRadar';
 
@@ -28,7 +28,7 @@ const DashboardSidebar: React.FC<Props> = ({
     return Object.entries(trainee.relationships)
       .map(([id, score]) => {
         const target = trainees.find(t => t.id === id);
-        return { target, score: score as number };
+        return { target, score: score as number, id };
       })
       .filter(r => r.target && r.target.status === 'Active')
       .sort((a, b) => (b.score as number) - (a.score as number));
@@ -80,7 +80,7 @@ const DashboardSidebar: React.FC<Props> = ({
              <Users size={18} className="text-blue-500" /> 교우 관계
            </h2>
            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
-             {relations.map(({ target, score }) => {
+             {relations.map(({ target, score, id }) => {
                 if (!target) return null;
                 
                 let icon = <Minus size={14} className="text-zinc-500" />;
@@ -88,10 +88,24 @@ const DashboardSidebar: React.FC<Props> = ({
                 let text = "동료";
                 
                 const s = score as number;
-                if (s >= 80) {
+                const special = selectedTrainee.specialRelations?.[id];
+
+                if (special === 'SecretLover') {
+                    icon = <Heart size={14} className="text-purple-500 fill-purple-500" />;
+                    color = "text-purple-400";
+                    text = "비밀 연인";
+                } else if (special === 'PublicLover') {
+                    icon = <Camera size={14} className="text-red-500" />;
+                    color = "text-red-500 animate-pulse";
+                    text = "공개 연인";
+                } else if (s >= 90) {
                     icon = <Heart size={14} className="text-pink-500 fill-pink-500" />;
                     color = "text-pink-400";
-                    text = s >= 90 ? "소울메이트" : "절친";
+                    text = "소울메이트";
+                } else if (s >= 80) {
+                    icon = <Heart size={14} className="text-pink-500" />;
+                    color = "text-pink-400";
+                    text = "절친";
                 } else if (s <= 20) {
                     icon = <HeartCrack size={14} className="text-red-500" />;
                     color = "text-red-400";

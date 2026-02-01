@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Smartphone, X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star, AlertCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
-import { Trainee as Idol } from '../../types/index';
-import { FAN_NICKNAMES, RANDOM_HANDLES, NEWS_SOURCES, TWEET_TEMPLATES } from '../../data/fanData';
+import { Smartphone, X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star, AlertCircle, AlertTriangle, ShieldAlert, Sparkles, Disc } from 'lucide-react';
+import { Trainee as Idol, Album } from '../../types/index';
+import { FAN_NICKNAMES, RANDOM_HANDLES, NEWS_SOURCES, TWEET_TEMPLATES, CONCEPT_REACTIONS } from '../../data/fanData';
+import { ALBUM_CONCEPTS } from '../../data/constants';
 
 interface Tweet {
   id: string;
@@ -14,7 +15,8 @@ interface Tweet {
   time: string;
   isVerified: boolean;
   isNew?: boolean;
-  type: 'news' | 'fan' | 'hater' | 'worried';
+  type: 'news' | 'fan' | 'hater' | 'worried' | 'rps' | 'concept';
+  conceptColor?: string;
 }
 
 interface Props {
@@ -22,9 +24,10 @@ interface Props {
   onClose: () => void;
   trainees: Idol[];
   historyLogs: string[];
+  albums: Album[];
 }
 
-const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs }) => {
+const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs, albums }) => {
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const lastLogCount = useRef(historyLogs.length);
 
@@ -39,6 +42,11 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     }
     return null;
   }, [historyLogs]);
+
+  const latestAlbum = useMemo(() => {
+    if (albums.length === 0) return null;
+    return albums[0]; // Assuming albums are sorted by release date descending in useGame or added to front
+  }, [albums]);
 
   const createSingleTweet = useCallback((isBatch: boolean = false): Tweet | null => {
     const activeArtists = trainees.filter(t => t.status === 'Active');
@@ -68,8 +76,9 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
 
     // Context Aware or General
     const artist = activeArtists[Math.floor(Math.random() * activeArtists.length)];
-    let type: 'fan' | 'hater' | 'worried' = 'fan';
+    let type: 'fan' | 'hater' | 'worried' | 'rps' | 'concept' = 'fan';
     let templates = TWEET_TEMPLATES.POSITIVE;
+    let conceptColor = undefined;
 
     if (hotTopic && dice < 0.6) {
         if (hotTopic.type === 'scandal' || hotTopic.type === 'critical') {
@@ -80,25 +89,69 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
             type = 'worried';
             templates = TWEET_TEMPLATES.WORRIED;
         }
+    } else {
+        // Concept Reaction Logic (If a recent album exists)
+        // Check if the album is recent (released within last ~10 weeks effectively, logic simplified to just existence of latest album here)
+        if (latestAlbum && Math.random() < 0.25) {
+           type = 'concept';
+           templates = CONCEPT_REACTIONS[latestAlbum.concept];
+           const config = ALBUM_CONCEPTS[latestAlbum.concept];
+           conceptColor = config.color; // e.g. 'bg-cyan-500'
+        }
+        // RPS logic: Only if there are at least 2 active members
+        else if (activeArtists.length >= 2 && dice < 0.15) { 
+           type = 'rps';
+           templates = TWEET_TEMPLATES.RPS;
+        } else if (dice < 0.7) {
+           type = 'fan';
+           templates = TWEET_TEMPLATES.POSITIVE;
+        } else if (dice < 0.85) {
+           type = 'worried';
+           templates = TWEET_TEMPLATES.WORRIED;
+        } else {
+           type = 'hater';
+           templates = TWEET_TEMPLATES.NEGATIVE;
+        }
     }
 
     const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
     const nickname = FAN_NICKNAMES[Math.floor(Math.random() * FAN_NICKNAMES.length)];
     const handlePart = RANDOM_HANDLES[Math.floor(Math.random() * RANDOM_HANDLES.length)];
+    
+    // Text Replacement
+    let text = randomTemplate.replace(/{name}/g, artist.name);
+    
+    // Replace {title} if it exists in the template (for concept tweets)
+    if (latestAlbum) {
+      text = text.replace(/{title}/g, latestAlbum.title);
+    } else {
+       // Fallback if no album but concept template triggered (shouldn't happen due to logic)
+       text = text.replace(/{title}/g, '신곡');
+    }
+
+    // For RPS, we need a second artist
+    if (type === 'rps' && activeArtists.length >= 2) {
+        const otherArtists = activeArtists.filter(a => a.id !== artist.id);
+        const artist2 = otherArtists[Math.floor(Math.random() * otherArtists.length)];
+        text = text.replace(/{name2}/g, artist2.name);
+    } else {
+        text = text.replace(/{name2}/g, '멤버'); 
+    }
 
     return {
       id: `gen-${Date.now()}-${Math.random()}`,
       user: type === 'hater' ? '익명' : `${artist.name}${nickname}`,
       handle: `@${artist.name.toLowerCase()}_${handlePart}${Math.floor(Math.random()*999)}`,
-      text: randomTemplate.replace(/{name}/g, artist.name),
+      text: text,
       likes: Math.floor(Math.random() * 2000),
       retweets: Math.floor(Math.random() * 1000),
       time: isBatch ? '방금 전' : '수 분 전',
       isVerified: Math.random() > 0.95,
       isNew: isBatch,
-      type
+      type,
+      conceptColor
     };
-  }, [trainees, hotTopic]);
+  }, [trainees, hotTopic, latestAlbum]);
 
   useEffect(() => {
     if (historyLogs.length > lastLogCount.current) {
@@ -129,12 +182,22 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     }
   }, [trainees.length, tweets.length, createSingleTweet]);
 
-  const getTypeStyle = (type: Tweet['type']) => {
-    switch (type) {
+  const getTypeStyle = (tweet: Tweet) => {
+    switch (tweet.type) {
       case 'news': return { icon: <Newspaper size={14} />, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'NEWS' };
       case 'fan': return { icon: <Heart size={14} className="fill-pink-500" />, color: 'text-pink-400', bg: 'bg-pink-500/10', label: 'FAN' };
       case 'hater': return { icon: <AlertCircle size={14} />, color: 'text-red-400', bg: 'bg-red-500/10', label: 'HATER' };
       case 'worried': return { icon: <AlertTriangle size={14} />, color: 'text-yellow-400', bg: 'bg-yellow-500/10', label: 'CAUTION' };
+      case 'rps': return { icon: <Sparkles size={14} className="fill-purple-500" />, color: 'text-purple-400', bg: 'bg-purple-500/10', label: 'CHEMI' };
+      case 'concept': 
+         // Extract specific color class for text/border/bg if possible, otherwise default
+         return { 
+             icon: <Disc size={14} />, 
+             color: 'text-zinc-200', 
+             bg: 'bg-zinc-800', 
+             label: 'ALBUM',
+             customBorder: tweet.conceptColor
+         };
       default: return { icon: <Star size={14} />, color: 'text-zinc-400', bg: 'bg-zinc-500/10', label: 'POST' };
     }
   };
@@ -186,21 +249,46 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
             ) : (
                 <div className="flex flex-col">
                     {tweets.map((tweet) => {
-                        const style = getTypeStyle(tweet.type);
+                        const style = getTypeStyle(tweet);
+                        
+                        // Dynamic styling for concept tweets based on album color
+                        let containerClasses = `p-4 border-b border-zinc-900/50 transition-all duration-700 ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}`;
+                        
+                        if (tweet.type === 'concept' && tweet.conceptColor) {
+                           // Use the color directly for border and slight bg tint
+                           // Tailwind arbitrary values for dynamic colors are tricky, so we use style attribute for specific border colors if needed
+                           // or map colors. Since we have standard tailwind colors in config, we can try to construct class.
+                           // Actually, simplest is to use inline style for border-left-color if dynamic.
+                           // But our conceptColor is a full class string like 'bg-cyan-500'. We need to extract color name.
+                           // Let's keep it simple: just add a specific class if it's concept.
+                           containerClasses += ` border-l-4 bg-zinc-900/30`;
+                        } else if (tweet.type === 'news') {
+                           containerClasses += ` bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg`;
+                        } else if (tweet.type === 'hater') {
+                           containerClasses += ` bg-red-950/5 border-l-4 border-l-red-500/40`;
+                        } else if (tweet.type === 'worried') {
+                           containerClasses += ` bg-yellow-900/5 border-l-4 border-l-yellow-500/40`;
+                        } else if (tweet.type === 'rps') {
+                           containerClasses += ` bg-purple-900/5 border-l-4 border-l-purple-500/40`;
+                        }
+
+                        // Parse color from bg class for border (hacky but works for visual consistency)
+                        // e.g. 'bg-cyan-500' -> border-cyan-500
+                        const borderStyle = tweet.type === 'concept' && tweet.conceptColor 
+                            ? { borderLeftColor: `var(--color-${tweet.conceptColor.split('-')[1]}-500)` } // This won't work easily with Tailwind JIT without safelist.
+                            : {};
+                            
+                        // Instead of dynamic style, let's map known concepts to border colors or just use the passed color class on an indicator element.
+
                         return (
                           <div 
                             key={tweet.id} 
-                            className={`
-                              p-4 border-b border-zinc-900/50 transition-all duration-700
-                              ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}
-                              ${tweet.type === 'news' ? 'bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg' : ''}
-                              ${tweet.type === 'hater' ? 'bg-red-950/5 border-l-4 border-l-red-500/40' : ''}
-                              ${tweet.type === 'worried' ? 'bg-yellow-900/5 border-l-4 border-l-yellow-500/40' : ''}
-                            `}
+                            className={containerClasses}
                           >
                               <div className="flex gap-3">
                                   <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold overflow-hidden shadow-inner
                                     ${tweet.type === 'news' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-zinc-700 to-zinc-900 text-zinc-400'}
+                                    ${tweet.type === 'concept' ? tweet.conceptColor : ''}
                                   `}>
                                       {tweet.type === 'news' ? <Newspaper size={18} /> : tweet.user[0]}
                                   </div>
@@ -226,6 +314,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                                       <p className={`text-sm leading-snug mb-3 whitespace-pre-wrap break-words
                                         ${tweet.type === 'news' ? 'font-bold text-zinc-100' : 'text-zinc-300'}
                                         ${tweet.type === 'hater' ? 'text-zinc-400 italic' : ''}
+                                        ${tweet.type === 'concept' ? 'text-zinc-100 font-medium' : ''}
                                       `}>
                                           {tweet.text}
                                       </p>
@@ -238,7 +327,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                                               <Repeat2 size={14} /> <span className="text-[10px]">{tweet.retweets}</span>
                                           </button>
                                           <button className="flex items-center gap-1.5 hover:text-pink-400 transition-colors">
-                                              <Heart size={14} className={tweet.likes > 2000 || tweet.type === 'fan' ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
+                                              <Heart size={14} className={tweet.likes > 2000 || tweet.type === 'fan' || tweet.type === 'rps' || tweet.type === 'concept' ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
                                           </button>
                                           <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
                                               <Share size={14} />

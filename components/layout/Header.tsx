@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles } from 'lucide-react';
+import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles, Building } from 'lucide-react';
 import { Trainee, Group } from '../../types/index';
 import { REPUTATION_TIERS } from '../../data/constants';
 
@@ -12,6 +12,7 @@ interface HeaderProps {
   onFileExport: () => void;
   onFileImport: (file: File) => void;
   onReset: () => void;
+  onOpenCompany?: () => void; // Added prop
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -21,7 +22,8 @@ const Header: React.FC<HeaderProps> = ({
   reputation = 0,
   onFileExport, 
   onFileImport, 
-  onReset
+  onReset,
+  onOpenCompany
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const totalFans = activeTrainees.reduce((acc, t) => acc + t.fans, 0).toLocaleString();
@@ -63,6 +65,17 @@ const Header: React.FC<HeaderProps> = ({
             <div className={`h-full ${currentTier.color.replace('text', 'bg')} transition-all duration-1000`} style={{ width: `${reputation}%` }} />
           </div>
         </div>
+        
+        {onOpenCompany && (
+            <button 
+                onClick={onOpenCompany}
+                className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 rounded-full border border-zinc-800 transition-colors group"
+                title="사옥 및 인사 관리"
+            >
+                <Building size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                <span className="text-sm font-bold text-zinc-400 group-hover:text-white hidden xl:inline">Management</span>
+            </button>
+        )}
 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 rounded-full border border-zinc-800 text-sm">
           <Wallet size={14} className="text-emerald-500" />
