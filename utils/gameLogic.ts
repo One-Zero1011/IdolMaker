@@ -74,10 +74,31 @@ export const processWeek = (
     if (activity === 'Live Stream') reputationPoints += 0.3;
 
     updatedTrainees = updatedTrainees.map((trainee: Trainee) => {
-      // 선택된 멤버가 아니면 활동하지 않음 (대신 체력 아주 조금 회복)
+      // 활동 멤버가 아니거나 입원 중인 경우
       if (!activeMemberIds.includes(trainee.id)) {
+          // 병원에 입원 중이라면 회복 로직 적용
+          if (trainee.status === 'Hospitalized') {
+             const recoveryAmount = 20;
+             const newStamina = Math.min(100, trainee.stamina + recoveryAmount);
+             const isRecovered = newStamina >= 80;
+             
+             if (isRecovered) {
+                 flatLogs.push(`[${dayName}] [회복] 🏥 ${trainee.name}이(가) 건강을 회복하고 퇴원했습니다!`);
+                 if (dayIndex === 0) currentDayEvents.push(`🏥 ${trainee.name} 퇴원 및 복귀`);
+             }
+
+             return { 
+                ...trainee, 
+                stamina: newStamina,
+                mental: Math.min(100, trainee.mental + 5),
+                status: isRecovered ? 'Active' : 'Hospitalized'
+             };
+          }
+          // 일반 대기 멤버는 소폭 회복
           return { ...trainee, stamina: Math.min(100, trainee.stamina + 2) };
       }
+      
+      // 활동 멤버지만 Active 상태가 아닌 경우 (방어 코드)
       if (trainee.status !== 'Active') return trainee;
 
       let isSuccess = true;
@@ -100,6 +121,9 @@ export const processWeek = (
         let earned = Math.floor((dailyPrice + baseBonus) * reputationMultiplier * marketerFundBonus);
         if (!isSuccess) earned = Math.floor(earned * 0.5);
         totalFundChange += earned;
+      } else if (dailyPrice < 0) {
+        // 비용 발생 (예: 심리상담)
+        totalFundChange += dailyPrice;
       }
 
       const mbtiLog = getRandomMbtiLog(trainee.mbti);
@@ -268,7 +292,7 @@ export const processWeek = (
         mental: Math.min(100, Math.max(0, trainee.mental + effects.mental + mentalChange)),
         fans: trainee.fans + fansChange,
         sentiment: Math.min(100, Math.max(0, trainee.sentiment + sentimentChange)),
-        scandalRisk: trainee.scandalRisk + effects.risk
+        scandalRisk: Math.max(0, trainee.scandalRisk + effects.risk) // Prevent negative risk
       };
     });
 

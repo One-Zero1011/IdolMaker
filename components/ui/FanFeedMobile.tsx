@@ -25,9 +25,10 @@ interface Props {
   trainees: Idol[];
   historyLogs: string[];
   albums: Album[];
+  isRpsEnabled: boolean; // Added Prop
 }
 
-const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs, albums }) => {
+const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs, albums, isRpsEnabled }) => {
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const lastLogCount = useRef(historyLogs.length);
 
@@ -91,15 +92,14 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
         }
     } else {
         // Concept Reaction Logic (If a recent album exists)
-        // Check if the album is recent (released within last ~10 weeks effectively, logic simplified to just existence of latest album here)
         if (latestAlbum && Math.random() < 0.25) {
            type = 'concept';
            templates = CONCEPT_REACTIONS[latestAlbum.concept];
            const config = ALBUM_CONCEPTS[latestAlbum.concept];
            conceptColor = config.color; // e.g. 'bg-cyan-500'
         }
-        // RPS logic: Only if there are at least 2 active members
-        else if (activeArtists.length >= 2 && dice < 0.15) { 
+        // RPS logic: Only if there are at least 2 active members AND RPS is enabled
+        else if (isRpsEnabled && activeArtists.length >= 2 && dice < 0.15) { 
            type = 'rps';
            templates = TWEET_TEMPLATES.RPS;
         } else if (dice < 0.7) {
@@ -151,7 +151,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
       type,
       conceptColor
     };
-  }, [trainees, hotTopic, latestAlbum]);
+  }, [trainees, hotTopic, latestAlbum, isRpsEnabled]);
 
   useEffect(() => {
     if (historyLogs.length > lastLogCount.current) {
@@ -190,7 +190,6 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
       case 'worried': return { icon: <AlertTriangle size={14} />, color: 'text-yellow-400', bg: 'bg-yellow-500/10', label: 'CAUTION' };
       case 'rps': return { icon: <Sparkles size={14} className="fill-purple-500" />, color: 'text-purple-400', bg: 'bg-purple-500/10', label: 'CHEMI' };
       case 'concept': 
-         // Extract specific color class for text/border/bg if possible, otherwise default
          return { 
              icon: <Disc size={14} />, 
              color: 'text-zinc-200', 
@@ -251,16 +250,10 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                     {tweets.map((tweet) => {
                         const style = getTypeStyle(tweet);
                         
-                        // Dynamic styling for concept tweets based on album color
+                        // Dynamic styling
                         let containerClasses = `p-4 border-b border-zinc-900/50 transition-all duration-700 ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}`;
                         
                         if (tweet.type === 'concept' && tweet.conceptColor) {
-                           // Use the color directly for border and slight bg tint
-                           // Tailwind arbitrary values for dynamic colors are tricky, so we use style attribute for specific border colors if needed
-                           // or map colors. Since we have standard tailwind colors in config, we can try to construct class.
-                           // Actually, simplest is to use inline style for border-left-color if dynamic.
-                           // But our conceptColor is a full class string like 'bg-cyan-500'. We need to extract color name.
-                           // Let's keep it simple: just add a specific class if it's concept.
                            containerClasses += ` border-l-4 bg-zinc-900/30`;
                         } else if (tweet.type === 'news') {
                            containerClasses += ` bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg`;
@@ -271,14 +264,6 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                         } else if (tweet.type === 'rps') {
                            containerClasses += ` bg-purple-900/5 border-l-4 border-l-purple-500/40`;
                         }
-
-                        // Parse color from bg class for border (hacky but works for visual consistency)
-                        // e.g. 'bg-cyan-500' -> border-cyan-500
-                        const borderStyle = tweet.type === 'concept' && tweet.conceptColor 
-                            ? { borderLeftColor: `var(--color-${tweet.conceptColor.split('-')[1]}-500)` } // This won't work easily with Tailwind JIT without safelist.
-                            : {};
-                            
-                        // Instead of dynamic style, let's map known concepts to border colors or just use the passed color class on an indicator element.
 
                         return (
                           <div 

@@ -24,15 +24,16 @@ import GlobalRankingChart from './components/ranking/GlobalRankingChart';
 import GroupCreationModal from './components/group/GroupCreationModal';
 import GroupSelector from './components/group/GroupSelector';
 import CompanyDashboard from './components/company/CompanyDashboard';
+import SettingsModal from './components/SettingsModal';
 
 const App: React.FC = () => {
   const {
     week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, activeGroupMembers, 
     weeklyPlan, gameLogs, historyLogs, notification, currentSpecialEvent, pendingDecision, albums, ranking, isChartOpen, 
-    groups, activeGroupId, activeGroup, hqLevel, staff,
+    groups, activeGroupId, activeGroup, hqLevel, staff, isRpsEnabled,
     addNewTrainee, removeTrainee, updateTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, setIsChartOpen, setActiveGroupId,
     exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue, formGroup,
-    upgradeHQ, hireStaff, fireStaff, renewContract
+    upgradeHQ, hireStaff, fireStaff, renewContract, toggleRps
   } = useGame();
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -44,6 +45,7 @@ const App: React.FC = () => {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isSimulationOpen, setIsSimulationOpen] = useState(false);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [currentResult, setCurrentResult] = useState<{ album: Album; revenue: number } | null>(null);
   
   // Contract Renewal State
@@ -110,6 +112,7 @@ const App: React.FC = () => {
         onFileImport={importFromFile}
         onReset={resetGame}
         onOpenCompany={() => setIsCompanyModalOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
 
       <main className="p-6 lg:p-8 max-w-[1920px] mx-auto animate-in fade-in duration-500">
@@ -223,13 +226,14 @@ const App: React.FC = () => {
       <WeeklyResultModal results={gameLogs} onClose={closeLogs} />
       <GlobalRankingChart isOpen={isChartOpen} onClose={() => setIsChartOpen(false)} ranking={ranking} week={week - 1} />
       <HistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} logs={historyLogs} />
-      <FanFeedMobile isOpen={isFanFeedOpen} onClose={() => setIsFanFeedOpen(false)} trainees={activeTrainees} historyLogs={historyLogs} albums={albums} />
+      <FanFeedMobile isOpen={isFanFeedOpen} onClose={() => setIsFanFeedOpen(false)} trainees={activeTrainees} historyLogs={historyLogs} albums={albums} isRpsEnabled={isRpsEnabled} />
       <SpecialEventModal isOpen={pendingDecision} event={currentSpecialEvent} funds={funds} onDecision={handleEventDecision} />
       <AlbumProductionModal isOpen={isAlbumModalOpen} onClose={() => setIsAlbumModalOpen(false)} activeTrainees={activeGroupMembers} funds={funds} onProduce={handleAlbumProduction} />
       <AlbumReleaseSimulationModal isOpen={isSimulationOpen} album={currentResult?.album || null} totalRevenue={currentResult?.revenue || 0} onClose={() => setIsSimulationOpen(false)} onSettle={handleFinalSettlement} />
       <GroupCreationModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} trainees={trainees} existingGroups={groups} onForm={formGroup} />
       <CompanyDashboard isOpen={isCompanyModalOpen} onClose={() => setIsCompanyModalOpen(false)} hqLevel={hqLevel} staff={staff} funds={funds} onUpgradeHQ={upgradeHQ} onHireStaff={hireStaff} onFireStaff={fireStaff} />
       <ContractRenewalModal isOpen={isRenewalModalOpen} onClose={() => setIsRenewalModalOpen(false)} trainee={renewingTrainee} funds={funds} onRenew={handleRenewConfirm} onRelease={handleReleaseConfirm} />
+      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} isRpsEnabled={isRpsEnabled} onToggleRps={toggleRps} />
       <MessageModal isOpen={notification.isOpen} title={notification.title} message={notification.message} type={notification.type} onConfirm={notification.onConfirm || (() => {})} onClose={closeMessage} />
     </div>
   );

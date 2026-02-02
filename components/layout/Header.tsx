@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles, Building } from 'lucide-react';
+import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles, Building, Settings } from 'lucide-react';
 import { Trainee, Group } from '../../types/index';
 import { REPUTATION_TIERS } from '../../data/constants';
 
@@ -12,7 +12,8 @@ interface HeaderProps {
   onFileExport: () => void;
   onFileImport: (file: File) => void;
   onReset: () => void;
-  onOpenCompany?: () => void; // Added prop
+  onOpenCompany?: () => void;
+  onOpenSettings?: () => void; // Added prop
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -23,7 +24,8 @@ const Header: React.FC<HeaderProps> = ({
   onFileExport, 
   onFileImport, 
   onReset,
-  onOpenCompany
+  onOpenCompany,
+  onOpenSettings
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const totalFans = activeTrainees.reduce((acc, t) => acc + t.fans, 0).toLocaleString();
@@ -90,6 +92,16 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenSettings && (
+            <button 
+              onClick={onOpenSettings}
+              title="설정"
+              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all"
+            >
+              <Settings size={16} />
+            </button>
+          )}
+
           <div className="flex items-center bg-zinc-900/50 rounded-lg p-0.5 border border-zinc-800">
             <button 
               onClick={onFileExport}

@@ -197,10 +197,10 @@ export const SCHEDULE_EFFECTS: Record<ScheduleType, {
   'Dance Practice': { stats: { dance: 1.5, stamina: 0.5 }, stamina: -25, mental: -5, risk: 0.5, price: 0, facilityAffinity: 'dance' },
   'Rap Lesson': { stats: { rap: 1.5 }, stamina: -10, mental: -10, risk: 0, price: 0, facilityAffinity: 'rap' },
   'Gym': { stats: { stamina: 1, visual: 0.5 }, stamina: -20, mental: -5, risk: 0, price: 0, facilityAffinity: 'gym' },
-  'Psychotherapy': { stats: { leadership: 0.5 }, stamina: 5, mental: +30, risk: 0, price: -30000 },
+  'Psychotherapy': { stats: { leadership: 0.5 }, stamina: 5, mental: +30, risk: -10, price: -30000 },
   'Street Performance': { stats: { visual: 1, dance: 1, vocal: 1 }, stamina: -40, mental: 10, risk: 5, price: 20000 }, 
   'Live Stream': { stats: { visual: 0.5, leadership: 0.5 }, stamina: -20, mental: 20, risk: 2, price: 10000 }, 
-  'Rest': { stats: {}, stamina: 35, mental: 25, risk: 0, price: 0 }
+  'Rest': { stats: {}, stamina: 35, mental: 25, risk: -5, price: 0 }
 };
 
 export const FACILITY_UPGRADE_COSTS: Record<number, number> = {

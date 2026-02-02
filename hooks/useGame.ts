@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Trainee, WeeklyPlan, GameLog, ScheduleType, FacilitiesState, FacilityType, TraineeStatus, SpecialEvent, Album, AlbumConcept, RankingEntry, Group, StaffState, HQLevel, StaffRole } from '../types/index';
 import { INITIAL_FUNDS, FACILITY_UPGRADE_COSTS, ANNUAL_EVENTS, ALBUM_CONCEPTS, BASE_ALBUM_PRICE, HQ_LEVELS, STAFF_ROLES } from '../data/constants';
@@ -25,6 +26,7 @@ export const useGame = () => {
   const [staff, setStaff] = useState<StaffState>({
     manager: 0, vocal_trainer: 0, dance_trainer: 0, marketer: 0, stylist: 0
   });
+  const [isRpsEnabled, setIsRpsEnabled] = useState(true); // New State for RPS toggle
 
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -64,6 +66,7 @@ export const useGame = () => {
     setFacilities({ vocal: 1, dance: 1, rap: 1, gym: 1 });
     setHqLevel(1);
     setStaff({ manager: 0, vocal_trainer: 0, dance_trainer: 0, marketer: 0, stylist: 0 });
+    setIsRpsEnabled(true);
     setTrainees([]);
     setGroups([]);
     setActiveGroupId(null);
@@ -79,13 +82,13 @@ export const useGame = () => {
   // 브라우저 캐시 자동 저장 (Debounced Save)
   useEffect(() => {
     const dataToSave = {
-      week, funds, reputation, lastAlbumWeek, facilities, hqLevel, staff, trainees, groups, activeGroupId, weeklyPlan, historyLogs, albums, ranking, lastEventDecisionWeek
+      week, funds, reputation, lastAlbumWeek, facilities, hqLevel, staff, isRpsEnabled, trainees, groups, activeGroupId, weeklyPlan, historyLogs, albums, ranking, lastEventDecisionWeek
     };
     const timeoutId = setTimeout(() => {
       localStorage.setItem(SAVE_KEY, JSON.stringify(dataToSave));
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [week, funds, reputation, trainees, groups, activeGroupId, weeklyPlan, albums, ranking, hqLevel, staff]);
+  }, [week, funds, reputation, trainees, groups, activeGroupId, weeklyPlan, albums, ranking, hqLevel, staff, isRpsEnabled]);
 
   // 첫 로드 시 브라우저 캐시에서 복원
   useEffect(() => {
@@ -99,6 +102,7 @@ export const useGame = () => {
         if (parsed.facilities) setFacilities(parsed.facilities);
         if (parsed.hqLevel) setHqLevel(parsed.hqLevel);
         if (parsed.staff) setStaff(parsed.staff);
+        if (parsed.isRpsEnabled !== undefined) setIsRpsEnabled(parsed.isRpsEnabled);
         if (parsed.trainees) setTrainees(parsed.trainees);
         if (parsed.groups) setGroups(parsed.groups);
         if (parsed.activeGroupId) setActiveGroupId(parsed.activeGroupId);
@@ -114,7 +118,7 @@ export const useGame = () => {
 
   // 파일로 내보내기 (Export)
   const exportToFile = () => {
-    const dataToSave = { week, funds, reputation, lastAlbumWeek, facilities, hqLevel, staff, trainees, groups, activeGroupId, weeklyPlan, historyLogs, albums, ranking, timestamp: new Date().toISOString() };
+    const dataToSave = { week, funds, reputation, lastAlbumWeek, facilities, hqLevel, staff, isRpsEnabled, trainees, groups, activeGroupId, weeklyPlan, historyLogs, albums, ranking, timestamp: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -143,6 +147,7 @@ export const useGame = () => {
         setFacilities(parsed.facilities || { vocal: 1, dance: 1, rap: 1, gym: 1 });
         setHqLevel(parsed.hqLevel || 1);
         setStaff(parsed.staff || { manager: 0, vocal_trainer: 0, dance_trainer: 0, marketer: 0, stylist: 0 });
+        if (parsed.isRpsEnabled !== undefined) setIsRpsEnabled(parsed.isRpsEnabled);
         showMessage("불러오기 완료", "파일로부터 데이터를 성공적으로 복원했습니다.", "success");
       } catch (err) {
         showMessage("오류", "파일 형식이 올바르지 않습니다.", "alert");
@@ -333,13 +338,14 @@ export const useGame = () => {
   return {
     week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, activeGroupMembers, 
     weeklyPlan, gameLogs, historyLogs, notification, albums, ranking, isChartOpen, groups, activeGroupId, activeGroup,
-    currentSpecialEvent, pendingDecision, hqLevel, staff,
+    currentSpecialEvent, pendingDecision, hqLevel, staff, isRpsEnabled,
     addNewTrainee: (data: any, cost: number) => { setFunds(prev => prev - cost); setTrainees(prev => [...prev, { ...data, id: generateId(), fans: 0, status: 'Active', contractRemaining: 48, history: [], relationships: {}, specialRelations: {} }]); },
     removeTrainee: (id: string) => setTrainees(prev => prev.filter(t => t.id !== id)),
     updateTrainee,
     upgradeFacility, updateDailyPlan, nextWeek, closeLogs: () => setGameLogs(null), setIsChartOpen, setActiveGroupId,
     exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue,
     formGroup: (name: string, memberIds: string[], type: any) => { setGroups(prev => [...prev, { id: generateId(), name, memberIds, type, formedWeek: week }]); showMessage("그룹 결성", `${name}가 데뷔했습니다!`, "success"); },
-    upgradeHQ, hireStaff, fireStaff, renewContract
+    upgradeHQ, hireStaff, fireStaff, renewContract,
+    toggleRps: () => setIsRpsEnabled(prev => !prev)
   };
 };
