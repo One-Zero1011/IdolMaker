@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from './hooks/useGame';
 import { Trainee, AlbumConcept, Album } from './types/index';
 import { Smartphone, Disc, Timer, AlertCircle } from 'lucide-react';
+import { TUTORIAL_STEPS } from './data/constants';
 
 // Components
 import Header from './components/layout/Header';
@@ -25,12 +26,13 @@ import GroupCreationModal from './components/group/GroupCreationModal';
 import GroupSelector from './components/group/GroupSelector';
 import CompanyDashboard from './components/company/CompanyDashboard';
 import SettingsModal from './components/SettingsModal';
+import TutorialOverlay from './components/ui/TutorialOverlay';
 
 const App: React.FC = () => {
   const {
     week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, activeGroupMembers, 
     weeklyPlan, gameLogs, historyLogs, notification, currentSpecialEvent, pendingDecision, albums, ranking, isChartOpen, 
-    groups, activeGroupId, activeGroup, hqLevel, staff, isRpsEnabled,
+    groups, activeGroupId, activeGroup, hqLevel, staff, isRpsEnabled, tutorialControls,
     addNewTrainee, removeTrainee, updateTrainee, upgradeFacility, updateDailyPlan, nextWeek, closeLogs, setIsChartOpen, setActiveGroupId,
     exportToFile, importFromFile, resetGame, closeMessage, handleEventDecision, produceAlbum, settleAlbumRevenue, formGroup,
     upgradeHQ, hireStaff, fireStaff, renewContract, toggleRps
@@ -116,6 +118,15 @@ const App: React.FC = () => {
     setRenewingTrainee(null);
   };
 
+  // Tutorial Logic
+  const handleTutorialNext = () => {
+    if (tutorialControls.step < TUTORIAL_STEPS.length - 1) {
+        tutorialControls.next();
+    } else {
+        tutorialControls.close();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-yellow-500/30">
       
@@ -129,6 +140,7 @@ const App: React.FC = () => {
         onReset={resetGame}
         onOpenCompany={() => setIsCompanyModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenTutorial={tutorialControls.start}
       />
 
       <main className="p-6 lg:p-8 max-w-[1920px] mx-auto animate-in fade-in duration-500">
@@ -260,6 +272,17 @@ const App: React.FC = () => {
       <ContractRenewalModal isOpen={isRenewalModalOpen} onClose={() => setIsRenewalModalOpen(false)} trainee={renewingTrainee} funds={funds} onRenew={handleRenewConfirm} onRelease={handleReleaseConfirm} />
       <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} isRpsEnabled={isRpsEnabled} onToggleRps={toggleRps} />
       <MessageModal isOpen={notification.isOpen} title={notification.title} message={notification.message} type={notification.type} onConfirm={notification.onConfirm || (() => {})} onClose={closeMessage} />
+      
+      <TutorialOverlay 
+        isOpen={tutorialControls.isActive} 
+        step={tutorialControls.step}
+        totalSteps={TUTORIAL_STEPS.length}
+        title={TUTORIAL_STEPS[tutorialControls.step]?.title}
+        content={TUTORIAL_STEPS[tutorialControls.step]?.content}
+        onNext={handleTutorialNext}
+        onPrev={tutorialControls.prev}
+        onClose={tutorialControls.close}
+      />
     </div>
   );
 };

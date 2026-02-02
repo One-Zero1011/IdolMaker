@@ -5,6 +5,7 @@ import { INITIAL_FUNDS, FACILITY_UPGRADE_COSTS, ANNUAL_EVENTS, ALBUM_CONCEPTS, B
 import { generateId, processWeek, calculateGlobalRanking } from '../utils/gameLogic';
 
 const SAVE_KEY = 'k_idol_producer_v2_save';
+const TUTORIAL_KEY = 'k_idol_producer_tutorial_done';
 
 interface NotificationState {
   isOpen: boolean;
@@ -43,6 +44,10 @@ export const useGame = () => {
   const [pendingDecision, setPendingDecision] = useState(false);
   const [lastEventDecisionWeek, setLastEventDecisionWeek] = useState(-1);
 
+  // Tutorial State
+  const [isTutorialActive, setIsTutorialActive] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
   const [notification, setNotification] = useState<NotificationState>({
     isOpen: false, title: '', message: '', type: 'alert'
   });
@@ -77,6 +82,9 @@ export const useGame = () => {
     setLastEventDecisionWeek(-1);
     setPendingDecision(false);
     setCurrentSpecialEvent(null);
+    // 튜토리얼 다시 활성화
+    setIsTutorialActive(true);
+    setTutorialStep(0);
   };
 
   // 브라우저 캐시 자동 저장 (Debounced Save)
@@ -90,7 +98,7 @@ export const useGame = () => {
     return () => clearTimeout(timeoutId);
   }, [week, funds, reputation, trainees, groups, activeGroupId, weeklyPlan, albums, ranking, hqLevel, staff, isRpsEnabled]);
 
-  // 첫 로드 시 브라우저 캐시에서 복원
+  // 첫 로드 시 브라우저 캐시에서 복원 & 튜토리얼 체크
   useEffect(() => {
     const savedData = localStorage.getItem(SAVE_KEY);
     if (savedData) {
@@ -113,6 +121,12 @@ export const useGame = () => {
       } catch (e) {
         console.error("Save data corruption detected.", e);
       }
+    }
+
+    // Check Tutorial Status
+    const tutorialDone = localStorage.getItem(TUTORIAL_KEY);
+    if (!tutorialDone) {
+        setIsTutorialActive(true);
     }
   }, []);
 
@@ -163,6 +177,7 @@ export const useGame = () => {
       "confirm", 
       () => {
         localStorage.removeItem(SAVE_KEY);
+        // localStorage.removeItem(TUTORIAL_KEY); // Optional: Reset tutorial too
         initializeStarters();
         window.location.reload(); // 리셋 후 완전한 상태 전환을 위해 새로고침 (안정성 최우선)
       }
@@ -228,6 +243,19 @@ export const useGame = () => {
       setReputation(prev => Math.min(100, prev + (event.rewards.reputation || 0)));
       setTrainees(prev => prev.map(t => activeGroup?.memberIds.includes(t.id) ? { ...t, fans: t.fans + (event.rewards.fans || 0) } : t));
       setHistoryLogs(prev => [`[이벤트] ${event.title} 완료`, ...prev]);
+
+      // Result Message
+      const rewardsText = [
+        event.rewards.fans ? `✨ 팬 유입: +${event.rewards.fans.toLocaleString()}명` : '',
+        event.rewards.reputation ? `🏆 평판 상승: +${event.rewards.reputation}` : '',
+        event.rewards.funds ? `💰 수익: +₩${event.rewards.funds.toLocaleString()}` : ''
+      ].filter(Boolean).join('\n');
+
+      showMessage(
+        "이벤트 결과", 
+        `${event.title}에 성공적으로 참가했습니다!\n\n[획득 보상]\n${rewardsText}`,
+        "success"
+      );
     }
     setPendingDecision(false);
     setCurrentSpecialEvent(null);
@@ -335,10 +363,27 @@ export const useGame = () => {
     return true;
   };
 
+  // Tutorial Controls
+  const tutorialControls = {
+    isActive: isTutorialActive,
+    step: tutorialStep,
+    next: () => setTutorialStep(prev => prev + 1),
+    prev: () => setTutorialStep(prev => prev - 1),
+    close: () => {
+        setIsTutorialActive(false);
+        localStorage.setItem(TUTORIAL_KEY, 'true');
+    },
+    start: () => {
+        setIsTutorialActive(true);
+        setTutorialStep(0);
+    }
+  };
+
   return {
     week, funds, reputation, lastAlbumWeek, facilities, trainees, activeTrainees, activeGroupMembers, 
     weeklyPlan, gameLogs, historyLogs, notification, albums, ranking, isChartOpen, groups, activeGroupId, activeGroup,
     currentSpecialEvent, pendingDecision, hqLevel, staff, isRpsEnabled,
+    tutorialControls,
     addNewTrainee: (data: any, cost: number) => { setFunds(prev => prev - cost); setTrainees(prev => [...prev, { ...data, id: generateId(), fans: 0, status: 'Active', contractRemaining: 48, history: [], relationships: {}, specialRelations: {} }]); },
     removeTrainee: (id: string) => setTrainees(prev => prev.filter(t => t.id !== id)),
     updateTrainee,

@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles, Building, Settings } from 'lucide-react';
+import { Music2, Trophy, RotateCcw, FileOutput, FileInput, Wallet, Star, Sparkles, Building, Settings, HelpCircle } from 'lucide-react';
 import { Trainee, Group } from '../../types/index';
 import { REPUTATION_TIERS } from '../../data/constants';
 
@@ -13,7 +13,8 @@ interface HeaderProps {
   onFileImport: (file: File) => void;
   onReset: () => void;
   onOpenCompany?: () => void;
-  onOpenSettings?: () => void; // Added prop
+  onOpenSettings?: () => void;
+  onOpenTutorial?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -25,7 +26,8 @@ const Header: React.FC<HeaderProps> = ({
   onFileImport, 
   onReset,
   onOpenCompany,
-  onOpenSettings
+  onOpenSettings,
+  onOpenTutorial
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const totalFans = activeTrainees.reduce((acc, t) => acc + t.fans, 0).toLocaleString();
@@ -92,6 +94,16 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenTutorial && (
+            <button 
+              onClick={onOpenTutorial}
+              title="튜토리얼"
+              className="p-2 text-indigo-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all"
+            >
+              <HelpCircle size={16} />
+            </button>
+          )}
+
           {onOpenSettings && (
             <button 
               onClick={onOpenSettings}

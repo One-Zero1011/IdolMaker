@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Smartphone, X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star, AlertCircle, AlertTriangle, ShieldAlert, Sparkles, Disc } from 'lucide-react';
+import { X, Heart, MessageCircle, Repeat2, Share, CheckCircle2, Newspaper, TrendingUp, Star, AlertCircle, AlertTriangle, Sparkles, Disc, Loader2, RefreshCw } from 'lucide-react';
 import { Trainee as Idol, Album } from '../../types/index';
 import { FAN_NICKNAMES, RANDOM_HANDLES, NEWS_SOURCES, TWEET_TEMPLATES, CONCEPT_REACTIONS } from '../../data/fanData';
 import { ALBUM_CONCEPTS } from '../../data/constants';
@@ -25,12 +25,14 @@ interface Props {
   trainees: Idol[];
   historyLogs: string[];
   albums: Album[];
-  isRpsEnabled: boolean; // Added Prop
+  isRpsEnabled: boolean;
 }
 
 const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs, albums, isRpsEnabled }) => {
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const lastLogCount = useRef(historyLogs.length);
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Analyze recent logs to find "Hot Topics"
   const hotTopic = useMemo(() => {
@@ -46,7 +48,7 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
 
   const latestAlbum = useMemo(() => {
     if (albums.length === 0) return null;
-    return albums[0]; // Assuming albums are sorted by release date descending in useGame or added to front
+    return albums[0];
   }, [albums]);
 
   const createSingleTweet = useCallback((isBatch: boolean = false): Tweet | null => {
@@ -70,12 +72,11 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
         retweets: Math.floor(Math.random() * 15000 + 8000),
         time: isBatch ? '방금 전' : '1분 전',
         isVerified: source.isVerified,
-        isNew: isBatch,
+        isNew: true,
         type: 'news'
       };
     }
 
-    // Context Aware or General
     const artist = activeArtists[Math.floor(Math.random() * activeArtists.length)];
     let type: 'fan' | 'hater' | 'worried' | 'rps' | 'concept' = 'fan';
     let templates = TWEET_TEMPLATES.POSITIVE;
@@ -91,14 +92,12 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
             templates = TWEET_TEMPLATES.WORRIED;
         }
     } else {
-        // Concept Reaction Logic (If a recent album exists)
         if (latestAlbum && Math.random() < 0.25) {
            type = 'concept';
            templates = CONCEPT_REACTIONS[latestAlbum.concept];
            const config = ALBUM_CONCEPTS[latestAlbum.concept];
-           conceptColor = config.color; // e.g. 'bg-cyan-500'
+           conceptColor = config.color;
         }
-        // RPS logic: Only if there are at least 2 active members AND RPS is enabled
         else if (isRpsEnabled && activeArtists.length >= 2 && dice < 0.15) { 
            type = 'rps';
            templates = TWEET_TEMPLATES.RPS;
@@ -118,18 +117,14 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
     const nickname = FAN_NICKNAMES[Math.floor(Math.random() * FAN_NICKNAMES.length)];
     const handlePart = RANDOM_HANDLES[Math.floor(Math.random() * RANDOM_HANDLES.length)];
     
-    // Text Replacement
     let text = randomTemplate.replace(/{name}/g, artist.name);
     
-    // Replace {title} if it exists in the template (for concept tweets)
     if (latestAlbum) {
       text = text.replace(/{title}/g, latestAlbum.title);
     } else {
-       // Fallback if no album but concept template triggered (shouldn't happen due to logic)
        text = text.replace(/{title}/g, '신곡');
     }
 
-    // For RPS, we need a second artist
     if (type === 'rps' && activeArtists.length >= 2) {
         const otherArtists = activeArtists.filter(a => a.id !== artist.id);
         const artist2 = otherArtists[Math.floor(Math.random() * otherArtists.length)];
@@ -147,30 +142,42 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
       retweets: Math.floor(Math.random() * 1000),
       time: isBatch ? '방금 전' : '수 분 전',
       isVerified: Math.random() > 0.95,
-      isNew: isBatch,
+      isNew: true,
       type,
       conceptColor
     };
   }, [trainees, hotTopic, latestAlbum, isRpsEnabled]);
 
+  // Generate a batch of tweets
+  const generateBatch = useCallback(() => {
+    const totalFans = trainees.reduce((acc, t) => acc + t.fans, 0);
+    // Calculation: 1 tweet per 100 fans
+    let countToGenerate = Math.floor(totalFans / 100);
+    
+    // Constraints: Min 1, Max 50
+    countToGenerate = Math.max(1, countToGenerate);
+    countToGenerate = Math.min(50, countToGenerate);
+
+    const newBatch: Tweet[] = [];
+    for (let i = 0; i < countToGenerate; i++) {
+        const t = createSingleTweet(true);
+        if (t) newBatch.push(t);
+    }
+    
+    if (newBatch.length > 0) {
+        setTweets(prev => [...newBatch, ...prev].slice(0, 100));
+    }
+  }, [trainees, createSingleTweet]);
+
+  // Auto-generate on log update (Weekly schedule finished)
   useEffect(() => {
     if (historyLogs.length > lastLogCount.current) {
-        const totalFans = trainees.reduce((acc, t) => acc + t.fans, 0);
-        const countToGenerate = Math.min(50, Math.max(1, Math.floor(totalFans / 100)));
-        
-        const newBatch: Tweet[] = [];
-        for (let i = 0; i < countToGenerate; i++) {
-            const t = createSingleTweet(true);
-            if (t) newBatch.push(t);
-        }
-
-        if (newBatch.length > 0) {
-            setTweets(prev => [...newBatch, ...prev].slice(0, 100));
-        }
+        generateBatch();
         lastLogCount.current = historyLogs.length;
     }
-  }, [historyLogs, trainees, createSingleTweet]);
+  }, [historyLogs, generateBatch]);
 
+  // Initial load
   useEffect(() => {
     if (tweets.length === 0 && trainees.length > 0) {
       const initial = [];
@@ -181,6 +188,19 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
       setTweets(initial);
     }
   }, [trainees.length, tweets.length, createSingleTweet]);
+
+  const handleManualRefresh = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800)); // Fake network delay
+    generateBatch();
+    setIsLoading(false);
+    
+    // Scroll to top
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const getTypeStyle = (tweet: Tweet) => {
     switch (tweet.type) {
@@ -221,7 +241,9 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
         </div>
 
         {/* X Header */}
-        <div className="bg-zinc-950/90 backdrop-blur border-b border-zinc-800 p-4 flex justify-between items-center z-10 sticky top-0">
+        <div className="bg-zinc-950/90 backdrop-blur border-b border-zinc-800 p-4 flex justify-between items-center z-10 sticky top-0 cursor-pointer" onClick={() => {
+            if (scrollContainerRef.current) scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }}>
             <div className="flex items-center gap-2">
                <span className="text-xl font-black italic text-white tracking-tighter">X</span>
                <div className="flex items-center gap-1 bg-yellow-500/20 px-2 py-0.5 rounded-full border border-yellow-500/30">
@@ -229,102 +251,128 @@ const FanFeedMobile: React.FC<Props> = ({ isOpen, onClose, trainees, historyLogs
                   <span className="text-[9px] font-bold text-yellow-400 uppercase tracking-tight">VIP</span>
                </div>
             </div>
-            <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded-full transition-colors text-zinc-500">
+            <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="p-1 hover:bg-zinc-800 rounded-full transition-colors text-zinc-500">
                 <X size={18} />
             </button>
         </div>
 
         {/* Feed Content */}
-        <div className="flex-1 overflow-y-auto bg-black custom-scrollbar">
-            {trainees.length === 0 ? (
-                <div className="p-12 text-center text-zinc-600 space-y-4">
-                    <Star size={48} className="mx-auto opacity-20 text-yellow-500" />
-                    <p className="text-sm font-medium">아티스트와 전속 계약을 체결하고 스케줄을 진행하면 여론이 형성됩니다.</p>
-                </div>
-            ) : tweets.length === 0 ? (
-                <div className="p-12 text-center text-zinc-600">
-                    스케줄을 실행하여 아티스트의 소식을 전하세요.
-                </div>
-            ) : (
-                <div className="flex flex-col">
-                    {tweets.map((tweet) => {
-                        const style = getTypeStyle(tweet);
-                        
-                        // Dynamic styling
-                        let containerClasses = `p-4 border-b border-zinc-900/50 transition-all duration-700 ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}`;
-                        
-                        if (tweet.type === 'concept' && tweet.conceptColor) {
-                           containerClasses += ` border-l-4 bg-zinc-900/30`;
-                        } else if (tweet.type === 'news') {
-                           containerClasses += ` bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg`;
-                        } else if (tweet.type === 'hater') {
-                           containerClasses += ` bg-red-950/5 border-l-4 border-l-red-500/40`;
-                        } else if (tweet.type === 'worried') {
-                           containerClasses += ` bg-yellow-900/5 border-l-4 border-l-yellow-500/40`;
-                        } else if (tweet.type === 'rps') {
-                           containerClasses += ` bg-purple-900/5 border-l-4 border-l-purple-500/40`;
-                        }
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto bg-black custom-scrollbar relative"
+        >
+            {/* Refresh Button Area */}
+            <div className="p-4 flex justify-center sticky top-0 z-20 pointer-events-none">
+                <button 
+                    onClick={handleManualRefresh}
+                    disabled={isLoading}
+                    className="pointer-events-auto flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-blue-900/40 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                    {isLoading ? (
+                        <>
+                            <Loader2 size={12} className="animate-spin" />
+                            반응 불러오는 중...
+                        </>
+                    ) : (
+                        <>
+                            <RefreshCw size={12} />
+                            새로운 반응 확인하기
+                        </>
+                    )}
+                </button>
+            </div>
 
-                        return (
-                          <div 
-                            key={tweet.id} 
-                            className={containerClasses}
-                          >
-                              <div className="flex gap-3">
-                                  <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold overflow-hidden shadow-inner
-                                    ${tweet.type === 'news' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-zinc-700 to-zinc-900 text-zinc-400'}
-                                    ${tweet.type === 'concept' ? tweet.conceptColor : ''}
-                                  `}>
-                                      {tweet.type === 'news' ? <Newspaper size={18} /> : tweet.user[0]}
-                                  </div>
+            <div>
+                {trainees.length === 0 ? (
+                    <div className="p-12 text-center text-zinc-600 space-y-4">
+                        <Star size={48} className="mx-auto opacity-20 text-yellow-500" />
+                        <p className="text-sm font-medium">아티스트와 전속 계약을 체결하고 스케줄을 진행하면 여론이 형성됩니다.</p>
+                    </div>
+                ) : tweets.length === 0 ? (
+                    <div className="p-12 text-center text-zinc-600">
+                        스케줄을 실행하여 아티스트의 소식을 전하세요.
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        {tweets.map((tweet) => {
+                            const style = getTypeStyle(tweet);
+                            
+                            // Dynamic styling
+                            let containerClasses = `p-4 border-b border-zinc-900/50 transition-all duration-700 ${tweet.isNew ? 'bg-yellow-500/[0.05] animate-in slide-in-from-top-4' : ''}`;
+                            
+                            if (tweet.type === 'concept' && tweet.conceptColor) {
+                              containerClasses += ` border-l-4 bg-zinc-900/30`;
+                            } else if (tweet.type === 'news') {
+                              containerClasses += ` bg-blue-900/10 border-l-4 border-l-blue-500/80 shadow-lg`;
+                            } else if (tweet.type === 'hater') {
+                              containerClasses += ` bg-red-950/5 border-l-4 border-l-red-500/40`;
+                            } else if (tweet.type === 'worried') {
+                              containerClasses += ` bg-yellow-900/5 border-l-4 border-l-yellow-500/40`;
+                            } else if (tweet.type === 'rps') {
+                              containerClasses += ` bg-purple-900/5 border-l-4 border-l-purple-500/40`;
+                            }
 
-                                  <div className="flex-1 min-w-0">
-                                      <div className="flex items-center justify-between mb-0.5">
-                                          <div className="flex items-center gap-1 min-w-0">
-                                              <span className={`text-sm font-bold truncate ${tweet.type === 'news' ? 'text-blue-400' : 'text-zinc-200'}`}>
-                                                  {tweet.user}
-                                              </span>
-                                              {tweet.isVerified && <CheckCircle2 size={12} className="text-blue-500 fill-blue-500 flex-shrink-0" />}
-                                              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black ml-1 ${style.bg} ${style.color}`}>
-                                                  {style.icon} {style.label}
-                                              </div>
-                                          </div>
-                                          <span className="text-zinc-600 text-[10px] flex-shrink-0">{tweet.time}</span>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-1 mb-1">
-                                         <span className="text-zinc-500 text-[11px] truncate">{tweet.handle}</span>
-                                      </div>
-
-                                      <p className={`text-sm leading-snug mb-3 whitespace-pre-wrap break-words
-                                        ${tweet.type === 'news' ? 'font-bold text-zinc-100' : 'text-zinc-300'}
-                                        ${tweet.type === 'hater' ? 'text-zinc-400 italic' : ''}
-                                        ${tweet.type === 'concept' ? 'text-zinc-100 font-medium' : ''}
+                            return (
+                              <div 
+                                key={tweet.id} 
+                                className={containerClasses}
+                              >
+                                  <div className="flex gap-3">
+                                      <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold overflow-hidden shadow-inner
+                                        ${tweet.type === 'news' ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-zinc-700 to-zinc-900 text-zinc-400'}
+                                        ${tweet.type === 'concept' ? tweet.conceptColor : ''}
                                       `}>
-                                          {tweet.text}
-                                      </p>
+                                          {tweet.type === 'news' ? <Newspaper size={18} /> : tweet.user[0]}
+                                      </div>
 
-                                      <div className="flex justify-between text-zinc-600 max-w-[220px]">
-                                          <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
-                                              <MessageCircle size={14} /> <span className="text-[10px]">{Math.floor(tweet.likes/12)}</span>
-                                          </button>
-                                          <button className="flex items-center gap-1.5 hover:text-green-400 transition-colors">
-                                              <Repeat2 size={14} /> <span className="text-[10px]">{tweet.retweets}</span>
-                                          </button>
-                                          <button className="flex items-center gap-1.5 hover:text-pink-400 transition-colors">
-                                              <Heart size={14} className={tweet.likes > 2000 || tweet.type === 'fan' || tweet.type === 'rps' || tweet.type === 'concept' ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
-                                          </button>
-                                          <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
-                                              <Share size={14} />
-                                          </button>
+                                      <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between mb-0.5">
+                                              <div className="flex items-center gap-1 min-w-0">
+                                                  <span className={`text-sm font-bold truncate ${tweet.type === 'news' ? 'text-blue-400' : 'text-zinc-200'}`}>
+                                                      {tweet.user}
+                                                  </span>
+                                                  {tweet.isVerified && <CheckCircle2 size={12} className="text-blue-500 fill-blue-500 flex-shrink-0" />}
+                                                  <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black ml-1 ${style.bg} ${style.color}`}>
+                                                      {style.icon} {style.label}
+                                                  </div>
+                                              </div>
+                                              <span className="text-zinc-600 text-[10px] flex-shrink-0">{tweet.time}</span>
+                                          </div>
+                                          
+                                          <div className="flex items-center gap-1 mb-1">
+                                            <span className="text-zinc-500 text-[11px] truncate">{tweet.handle}</span>
+                                          </div>
+
+                                          <p className={`text-sm leading-snug mb-3 whitespace-pre-wrap break-words
+                                            ${tweet.type === 'news' ? 'font-bold text-zinc-100' : 'text-zinc-300'}
+                                            ${tweet.type === 'hater' ? 'text-zinc-400 italic' : ''}
+                                            ${tweet.type === 'concept' ? 'text-zinc-100 font-medium' : ''}
+                                          `}>
+                                              {tweet.text}
+                                          </p>
+
+                                          <div className="flex justify-between text-zinc-600 max-w-[220px]">
+                                              <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
+                                                  <MessageCircle size={14} /> <span className="text-[10px]">{Math.floor(tweet.likes/12)}</span>
+                                              </button>
+                                              <button className="flex items-center gap-1.5 hover:text-green-400 transition-colors">
+                                                  <Repeat2 size={14} /> <span className="text-[10px]">{tweet.retweets}</span>
+                                              </button>
+                                              <button className="flex items-center gap-1.5 hover:text-pink-400 transition-colors">
+                                                  <Heart size={14} className={tweet.likes > 2000 || tweet.type === 'fan' || tweet.type === 'rps' || tweet.type === 'concept' ? 'fill-pink-500 text-pink-500' : ''} /> <span className="text-[10px]">{tweet.likes >= 1000 ? (tweet.likes/1000).toFixed(1)+'K' : tweet.likes}</span>
+                                              </button>
+                                              <button className="flex items-center gap-1.5 hover:text-blue-400 transition-colors">
+                                                  <Share size={14} />
+                                              </button>
+                                          </div>
                                       </div>
                                   </div>
                               </div>
-                          </div>
-                        );
-                    })}
-                </div>
-            )}
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* Bottom Bar Decor */}

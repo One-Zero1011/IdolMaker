@@ -148,19 +148,19 @@ const TraineeCard: React.FC<Props> = ({ trainee, allTrainees, onClick, onEdit, o
       </div>
 
       <div className="p-3 bg-zinc-950/30 space-y-1.5">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title="체력 (Stamina)">
           <Activity size={12} className="text-red-500" />
           <div className="flex-1 h-1 bg-zinc-800 rounded-full">
             <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.max(0, Math.min(100, trainee.stamina))}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title="멘탈 (Mental)">
           <ShieldAlert size={12} className="text-blue-500" />
           <div className="flex-1 h-1 bg-zinc-800 rounded-full">
             <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.max(0, Math.min(100, trainee.mental))}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/50">
+        <div className="flex items-center gap-2 pt-1 border-t border-zinc-800/50" title="여론/호감도 (Sentiment)">
           <MessageCircleHeart size={12} className={sentimentIconColor} />
           <div className="flex-1 h-1 bg-zinc-800 rounded-full relative overflow-hidden group-hover:bg-zinc-700 transition-colors">
              <div className="absolute top-0 left-1/2 w-0.5 h-full bg-black/50 z-10" />

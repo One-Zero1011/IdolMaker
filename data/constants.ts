@@ -12,6 +12,33 @@ export const COLORS = [
   '#f43f5e', '#64748b'
 ];
 
+export const TUTORIAL_STEPS = [
+  {
+    title: "K-아이돌 프로듀서에 오신 것을 환영합니다!",
+    content: "당신은 이제 신생 기획사의 대표가 되어 아이돌을 육성하게 됩니다.\n글로벌 톱스타를 만들기 위한 기본 시스템을 안내해 드리겠습니다."
+  },
+  {
+    title: "1. 연습생 영입 (Casting)",
+    content: "먼저 '연습생 캐스팅' 버튼을 눌러 원석을 발굴하세요.\n이름, 성별, MBTI, 포지션을 설정할 수 있습니다.\n초기 관계와 MBTI에 따라 다양한 돌발 이벤트가 발생합니다."
+  },
+  {
+    title: "2. 그룹 결성 (Debut)",
+    content: "연습생이 모이면 '정식 그룹 결성' 버튼을 눌러 데뷔조를 만드세요.\n멤버 조합에 따라 그룹의 평균 능력치와 성향이 결정됩니다."
+  },
+  {
+    title: "3. 스케줄 진행 (Next Week)",
+    content: "요일별 스케줄을 설정하고 중앙의 '스케줄 실행' 버튼을 누르세요.\n한 주가 지나면 능력치가 상승하고 자금을 획득합니다."
+  },
+  {
+    title: "4. 결과 및 로그 (Mission Log)",
+    content: "스케줄이 끝나면 주간 결과 리포트가 팝업됩니다.\n성공, 실패, 부상, 그리고 멤버 간의 관계성 이벤트 로그를 꼼꼼히 확인하세요."
+  },
+  {
+    title: "5. 경영 및 시스템 (Management)",
+    content: "상단 메뉴를 통해 사옥을 확장하고 전문 스태프를 고용하세요.\n우측 상단의 설정 버튼이나 스마트폰 아이콘(SNS)을 통해 다양한 기능을 제어할 수 있습니다."
+  }
+];
+
 export const NPC_GROUPS = [
   { name: 'NEO JEANS', song: 'Super Shy', basePower: 8500 },
   { name: 'BLACK VEIL', song: 'Shut Down', basePower: 9200 },
