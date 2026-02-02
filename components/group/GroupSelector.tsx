@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Group } from '../../types/index';
-import { Users, Star, Music2, Heart } from 'lucide-react';
+import { Users, Star, Music2, Heart, User, Layers } from 'lucide-react';
 
 interface Props {
   groups: Group[];
@@ -46,6 +46,19 @@ const GroupSelector: React.FC<Props> = ({ groups, activeGroupId, onSelect, onOpe
       >
         <Star size={16} />
         <span className="text-sm font-bold">새 그룹 결성</span>
+      </button>
+
+      <button
+        onClick={() => onSelect('TRAINEE_ONLY')}
+        className={`
+            flex items-center gap-2 px-5 py-3 rounded-2xl border-2 transition-all shrink-0
+            ${activeGroupId === 'TRAINEE_ONLY'
+                ? 'bg-zinc-800 border-zinc-600 text-white shadow-lg'
+                : 'bg-zinc-950 border-zinc-800 text-zinc-600 hover:border-zinc-700 hover:text-zinc-400'}
+        `}
+      >
+        <User size={16} />
+        <span className="text-sm font-bold">연습생 대기실</span>
       </button>
     </div>
   );

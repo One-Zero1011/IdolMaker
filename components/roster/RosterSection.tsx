@@ -5,6 +5,7 @@ import { Trainee } from '../../types/index';
 import TraineeCard from '../ui/TraineeCard';
 
 interface Props {
+  title?: string;
   trainees: Trainee[];
   hasGroup: boolean;
   selectedTraineeId: string | null;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 const RosterSection: React.FC<Props> = ({ 
+  title = "연습생 명단",
   trainees, 
   hasGroup,
   selectedTraineeId, 
@@ -33,7 +35,7 @@ const RosterSection: React.FC<Props> = ({
     <section className="space-y-4 pt-4 border-t border-zinc-800/50">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Users className="text-indigo-500" /> 연습생 명단
+          <Users className="text-indigo-500" /> {title}
         </h2>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {!hasGroup && activeCount > 0 && (
@@ -53,20 +55,26 @@ const RosterSection: React.FC<Props> = ({
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {trainees.map(trainee => (
-          <TraineeCard 
-            key={trainee.id} 
-            trainee={trainee} 
-            allTrainees={trainees}
-            onClick={() => onSelect(trainee.id)}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onRenew={onRenew}
-            selected={selectedTraineeId === trainee.id}
-          />
-        ))}
-      </div>
+      {trainees.length === 0 ? (
+        <div className="py-12 text-center border-2 border-dashed border-zinc-800 rounded-2xl">
+            <p className="text-zinc-600 text-sm">표시할 아티스트가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {trainees.map(trainee => (
+            <TraineeCard 
+                key={trainee.id} 
+                trainee={trainee} 
+                allTrainees={trainees}
+                onClick={() => onSelect(trainee.id)}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onRenew={onRenew}
+                selected={selectedTraineeId === trainee.id}
+            />
+            ))}
+        </div>
+      )}
     </section>
   );
 };

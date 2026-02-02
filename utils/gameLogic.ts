@@ -1,4 +1,5 @@
 
+// ... imports stay the same ...
 import { MBTI, Trainee, WeeklyPlan, TraineeStatus, DailyLog, FacilitiesState, RankingEntry, Album, Group, Stats, StaffState, HQLevel } from '../types/index';
 import { MBTI_GROUPS, SCHEDULE_EFFECTS, DAYS, SCANDAL_EVENTS, RANDOM_EVENTS, NPC_GROUPS, HQ_LEVELS, STAFF_ROLES } from '../data/constants';
 import { getRandomMbtiLog } from '../data/mbti/index';
@@ -10,6 +11,7 @@ import {
 export const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export const checkCompatibility = (mbti1: MBTI, mbti2: MBTI): boolean => {
+  // ... existing code ...
   const getGroup = (m: MBTI) => Object.keys(MBTI_GROUPS).find(key => MBTI_GROUPS[key as keyof typeof MBTI_GROUPS].includes(m));
   const g1 = getGroup(mbti1);
   const g2 = getGroup(mbti2);
@@ -74,33 +76,78 @@ export const processWeek = (
     if (activity === 'Live Stream') reputationPoints += 0.3;
 
     updatedTrainees = updatedTrainees.map((trainee: Trainee) => {
-      // 활동 멤버가 아니거나 입원 중인 경우
-      if (!activeMemberIds.includes(trainee.id)) {
-          // 병원에 입원 중이라면 회복 로직 적용
-          if (trainee.status === 'Hospitalized') {
-             const recoveryAmount = 20;
-             const newStamina = Math.min(100, trainee.stamina + recoveryAmount);
-             const isRecovered = newStamina >= 80;
-             
-             if (isRecovered) {
-                 flatLogs.push(`[${dayName}] [회복] 🏥 ${trainee.name}이(가) 건강을 회복하고 퇴원했습니다!`);
-                 if (dayIndex === 0) currentDayEvents.push(`🏥 ${trainee.name} 퇴원 및 복귀`);
-             }
+      // 0. Contract Management (Weekly Decrement on Day 0)
+      let currentContract = trainee.contractRemaining;
+      let currentStatus = trainee.status;
 
-             return { 
-                ...trainee, 
-                stamina: newStamina,
-                mental: Math.min(100, trainee.mental + 5),
-                status: isRecovered ? 'Active' : 'Hospitalized'
-             };
+      if (dayIndex === 0 && 
+          currentStatus !== 'Eliminated' && 
+          currentStatus !== 'Contract Terminated' && 
+          currentStatus !== 'Legendary') {
+          
+          currentContract -= 1;
+          
+          if (currentContract <= 0) {
+              currentStatus = 'Contract Terminated';
+              const expireLog = `[계약] 🛑 ${trainee.name}의 전속 계약이 만료되었습니다.`;
+              currentDayEvents.push(expireLog);
+              flatLogs.push(`[${dayName}] ${expireLog}`);
+          } else if (currentContract === 4) {
+              const warningLog = `[경고] ⚠️ ${trainee.name}의 계약 만료가 4주 남았습니다. 재계약을 서두르세요.`;
+              currentDayEvents.push(warningLog);
+              flatLogs.push(`[${dayName}] ${warningLog}`);
           }
-          // 일반 대기 멤버는 소폭 회복
-          return { ...trainee, stamina: Math.min(100, trainee.stamina + 2) };
+      }
+
+      // If terminated, just return updated contract state
+      if (currentStatus === 'Contract Terminated' || currentStatus === 'Eliminated') {
+          return { ...trainee, contractRemaining: currentContract, status: currentStatus };
+      }
+
+      // 1. Hospitalized Logic (Top Priority - Runs even if in active group)
+      if (currentStatus === 'Hospitalized') {
+         const recoveryAmount = 20;
+         const newStamina = Math.min(100, trainee.stamina + recoveryAmount);
+         const isRecovered = newStamina >= 80;
+         
+         const logMsg = isRecovered 
+            ? `🏥 ${trainee.name}이(가) 건강을 회복하고 퇴원했습니다! (복귀 완료)`
+            : `🏥 ${trainee.name}은(는) 입원 치료 중입니다. (체력: ${Math.floor(newStamina)}%)`;
+
+         if (isRecovered) {
+             if (dayIndex === 0) flatLogs.push(`[${dayName}] [회복] ${logMsg}`);
+         }
+         
+         if (activeMemberIds.includes(trainee.id)) {
+             currentDayEvents.push(logMsg);
+         }
+
+         return { 
+            ...trainee, 
+            stamina: newStamina,
+            mental: Math.min(100, trainee.mental + 5),
+            status: isRecovered ? 'Active' : 'Hospitalized',
+            contractRemaining: currentContract // Apply decremented contract
+         };
+      }
+
+      // 2. Inactive Logic (Members NOT in the active group)
+      if (!activeMemberIds.includes(trainee.id)) {
+          return { 
+              ...trainee, 
+              stamina: Math.min(100, trainee.stamina + 5),
+              mental: Math.min(100, trainee.mental + 2),
+              contractRemaining: currentContract,
+              status: currentStatus
+          };
       }
       
-      // 활동 멤버지만 Active 상태가 아닌 경우 (방어 코드)
-      if (trainee.status !== 'Active') return trainee;
+      // 3. Safety check for active group members with invalid status
+      if (currentStatus !== 'Active') {
+          return { ...trainee, contractRemaining: currentContract, status: currentStatus };
+      }
 
+      // 4. Normal Schedule Logic (Only for Active Members)
       let isSuccess = true;
       if (activity !== 'Rest') {
         if (trainee.stamina <= 0) isSuccess = false;
@@ -161,7 +208,7 @@ export const processWeek = (
       let scandalTriggered = false;
       const specialRelations = trainee.specialRelations || {};
       
-      // 0. Relationship Interactions (New Logic)
+      // 0. Relationship Interactions
       if (Math.random() < 0.15) { 
         const relations = Object.entries(trainee.relationships || {});
         if (relations.length > 0) {
@@ -260,7 +307,8 @@ export const processWeek = (
           mental: Math.max(0, trainee.mental - 10 + mentalChange), 
           fans: trainee.fans + fansChange,
           sentiment: Math.min(100, Math.max(0, trainee.sentiment + sentimentChange)),
-          status: trainee.stamina <= 0 && Math.random() < 0.2 ? 'Hospitalized' : 'Active'
+          status: trainee.stamina <= 0 && Math.random() < 0.2 ? 'Hospitalized' : currentStatus,
+          contractRemaining: currentContract
         };
       }
 
@@ -292,7 +340,9 @@ export const processWeek = (
         mental: Math.min(100, Math.max(0, trainee.mental + effects.mental + mentalChange)),
         fans: trainee.fans + fansChange,
         sentiment: Math.min(100, Math.max(0, trainee.sentiment + sentimentChange)),
-        scandalRisk: Math.max(0, trainee.scandalRisk + effects.risk) // Prevent negative risk
+        scandalRisk: Math.max(0, trainee.scandalRisk + effects.risk), // Prevent negative risk
+        contractRemaining: currentContract,
+        status: currentStatus
       };
     });
 

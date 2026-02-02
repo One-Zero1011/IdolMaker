@@ -68,7 +68,7 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                 <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center">
                   <MessageSquare className="text-zinc-600" size={32} />
                 </div>
-                <p>기록된 특이사항이 없습니다.</p>
+                <p>활동 가능한 멤버가 없거나<br/>기록된 특이사항이 없습니다.</p>
               </div>
             ) : (
               currentLog.logs.map((log, idx) => {
@@ -95,12 +95,20 @@ const WeeklyResultModal: React.FC<Props> = ({ results, onClose }) => {
                   iconColor = 'text-red-500';
                 }
                 // CRITICAL / DANGER (Red)
-                else if (log.includes('[비보]') || log.includes('[충격]') || log.includes('퇴출') || log.includes('탈진') || log.includes('부상')) {
+                else if (log.includes('[비보]') || log.includes('[충격]') || log.includes('퇴출') || log.includes('탈진') || log.includes('부상') || log.includes('입원')) {
                   bgColor = 'bg-red-950/30';
                   borderColor = 'border-red-900/50';
                   textColor = 'text-red-200';
                   Icon = AlertOctagon;
                   iconColor = 'text-red-500';
+                }
+                // HOSPITAL RECOVERY (Green/Blue)
+                else if (log.includes('퇴원') || log.includes('[회복]')) {
+                  bgColor = 'bg-blue-950/30';
+                  borderColor = 'border-blue-800/50';
+                  textColor = 'text-blue-200';
+                  Icon = Sparkles;
+                  iconColor = 'text-blue-400';
                 }
                 // RANDOM EVENT (Sparkles)
                 else if (log.includes('[이벤트]')) {

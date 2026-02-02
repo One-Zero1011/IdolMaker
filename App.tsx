@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGame } from './hooks/useGame';
 import { Trainee, AlbumConcept, Album } from './types/index';
 import { Smartphone, Disc, Timer, AlertCircle } from 'lucide-react';
@@ -55,6 +55,27 @@ const App: React.FC = () => {
   const canProduceAlbum = week - lastAlbumWeek >= 13;
   const weeksUntilNextAlbum = 13 - (week - lastAlbumWeek);
 
+  // 로스터 필터링 로직
+  const { displayedTrainees, rosterTitle } = useMemo(() => {
+    if (activeGroupId === 'TRAINEE_ONLY') {
+        const assignedIds = groups.flatMap(g => g.memberIds);
+        return {
+            displayedTrainees: trainees.filter(t => !assignedIds.includes(t.id)),
+            rosterTitle: '연습생 대기실'
+        };
+    } else if (activeGroup) {
+        return {
+            displayedTrainees: trainees.filter(t => activeGroup.memberIds.includes(t.id)),
+            rosterTitle: `${activeGroup.name} 아티스트 명단`
+        };
+    } else {
+        return {
+            displayedTrainees: trainees,
+            rosterTitle: '전체 아티스트 명단'
+        };
+    }
+  }, [activeGroupId, activeGroup, groups, trainees]);
+
   const handleAlbumProduction = (title: string, concept: AlbumConcept, price: number) => {
     const result = produceAlbum(title, concept, price);
     if (result) {
@@ -86,11 +107,6 @@ const App: React.FC = () => {
     if (success) {
       setIsRenewalModalOpen(false);
       setRenewingTrainee(null);
-      // Success message is handled via logic or UI update, but we can add explicit notification if needed
-    } else {
-      // Logic inside renewContract returns false if funds insufficient, handled by UI there or here
-      // But standard way:
-      // useGame notification state is shared.
     }
   };
 
@@ -176,14 +192,22 @@ const App: React.FC = () => {
             ) : (
               <div className="bg-zinc-900/50 border-2 border-dashed border-zinc-800 rounded-3xl p-12 text-center flex flex-col items-center gap-4">
                  <AlertCircle size={48} className="text-zinc-700" />
-                 <h3 className="text-xl font-bold text-zinc-400">활동 중인 그룹이 없습니다.</h3>
-                 <p className="text-sm text-zinc-600">하단의 연습생 명단에서 멤버를 조합하여 정식 그룹을 결성하세요.</p>
-                 <button 
-                   onClick={() => setIsGroupModalOpen(true)}
-                   className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-bold transition-all"
-                 >
-                   첫 그룹 결성하기
-                 </button>
+                 <h3 className="text-xl font-bold text-zinc-400">
+                    {activeGroupId === 'TRAINEE_ONLY' ? '연습생 대기실' : '활동 중인 그룹이 없습니다.'}
+                 </h3>
+                 <p className="text-sm text-zinc-600">
+                    {activeGroupId === 'TRAINEE_ONLY' 
+                        ? '이곳의 연습생들을 조합하여 새로운 그룹을 결성할 수 있습니다.'
+                        : '상단의 그룹을 선택하거나 새로운 그룹을 결성하세요.'}
+                 </p>
+                 {activeGroupId !== 'TRAINEE_ONLY' && (
+                    <button 
+                    onClick={() => setIsGroupModalOpen(true)}
+                    className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-bold transition-all"
+                    >
+                    첫 그룹 결성하기
+                    </button>
+                 )}
               </div>
             )}
 
@@ -196,7 +220,8 @@ const App: React.FC = () => {
             />
 
             <RosterSection 
-              trainees={trainees}
+              title={rosterTitle}
+              trainees={displayedTrainees}
               hasGroup={groups.length > 0}
               selectedTraineeId={selectedTraineeId}
               onSelect={setSelectedTraineeId}
